@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReBalanced.API", "src\ReBal
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReBalanced.Application", "src\ReBalanced.Application\ReBalanced.Application.csproj", "{7C61D016-BB46-4504-AA5F-A152C3B79495}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReBalanced.Infastructure", "src\ReBalanced.Infastructure\ReBalanced.Infastructure.csproj", "{F8256B89-E750-491E-A68B-1DA0343FCA40}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReBalanced.Infrastructure", "src\ReBalanced.Infrastructure\ReBalanced.Infrastructure.csproj", "{F8256B89-E750-491E-A68B-1DA0343FCA40}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReBalanced.Domain", "src\ReBalanced.Domain\ReBalanced.Domain.csproj", "{64241147-398A-43DB-BB36-BA8B641932AF}"
 EndProject

@@ -22,16 +22,6 @@ public class Account : BaseEntity, IAggregateRoot
 {
     private readonly Dictionary<string, Holding> _holdings = new();
 
-    public string Name { get; }
-    public AccountType AccountType { get; }
-    public HoldingType HoldingType { get; }
-
-    public IEnumerable<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
-
-    public HashSet<string> PriorityAssets { get; set; }
-    public HashSet<string> UndesiredAssets { get; set; }
-    public HashSet<string> PermissibleAssets { get; set; }
-
     public Account(string name, AccountType accountType, HoldingType holdingType, HashSet<string> permissibleAssets)
     {
         Name = name;
@@ -60,6 +50,16 @@ public class Account : BaseEntity, IAggregateRoot
         };
     }
 
+    public string Name { get; }
+    public AccountType AccountType { get; }
+    public HoldingType HoldingType { get; }
+
+    public IEnumerable<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
+
+    public HashSet<string> PriorityAssets { get; set; }
+    public HashSet<string> UndesiredAssets { get; set; }
+    public HashSet<string> PermissibleAssets { get; set; }
+
     public void AddHolding(Holding holding)
     {
         Guard.Against.InvalidInput(holding, nameof(Holding), x => PermissibleAssets.Contains(x.AssetTicker));
@@ -72,10 +72,7 @@ public class Account : BaseEntity, IAggregateRoot
 
     public decimal AssetDifference(string assetName, decimal amount)
     {
-        if (_holdings.ContainsKey(assetName))
-        {
-            return amount - _holdings[assetName].Quantity;
-        }
+        if (_holdings.ContainsKey(assetName)) return amount - _holdings[assetName].Quantity;
 
         return amount;
     }

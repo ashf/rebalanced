@@ -3,11 +3,10 @@ using Google.OrTools.LinearSolver;
 using Microsoft.Extensions.Logging;
 using ReBalanced.Application.Services.Interfaces;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities;
-using ReBalanced.Domain.Entities.Aggregates;
 using ReBalanced.Domain.Providers;
 
 namespace ReBalanced.Application.Services;
+
 public class RebalanceService : IRebalanceService
 {
     private const int MaxIterations = 100;

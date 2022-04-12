@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities;
 using ReBalanced.Domain.Providers;
 using ReBalanced.Infastructure;
 

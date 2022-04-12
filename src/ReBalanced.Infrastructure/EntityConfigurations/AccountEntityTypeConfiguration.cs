@@ -1,13 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities;
 
 namespace ReBalanced.Infastructure.EntityConfigurations;
 
-internal class PortfolioEntityTypeConfiguration : IEntityTypeConfiguration<Portfolio>
+internal class AccountEntityTypeConfiguration : IEntityTypeConfiguration<Account>
 {
-    public void Configure(EntityTypeBuilder<Portfolio> builder)
+    public void Configure(EntityTypeBuilder<Account> builder)
     {
         builder.HasKey(x => x.Id);
     }

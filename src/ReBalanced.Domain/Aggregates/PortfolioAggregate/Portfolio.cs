@@ -1,22 +1,21 @@
 ﻿using Ardalis.GuardClauses;
 using ReBalanced.Domain.Entities;
 using ReBalanced.Domain.Entities.Aggregates;
-using ReBalanced.Domain.ValueTypes;
 
 namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 public class Portfolio : BaseEntity, IAggregateRoot
 {
-    public string Name { get; }
-    public Dictionary<Guid, Account> Accounts { get; } = new();
-    public Dictionary<string, Allocation> Allocations { get; private set; } = new();
-    
     public Portfolio(string name)
     {
         Name = name;
 
         Allocations.Add("CASH", new Allocation("CASH", 100));
     }
+
+    public string Name { get; }
+    public Dictionary<Guid, Account> Accounts { get; } = new();
+    public Dictionary<string, Allocation> Allocations { get; private set; } = new();
 
     public void SetAllocation(ICollection<Allocation> newAllocationRules)
     {
@@ -49,7 +48,7 @@ public class Portfolio : BaseEntity, IAggregateRoot
     {
         Guard.Against.InvalidInput(accountId, nameof(accountId), x => !Accounts.ContainsKey(x),
             "Portfolio doesn't contain this account");
-        
+
         Accounts[accountId].AddHolding(holding);
     }
 }

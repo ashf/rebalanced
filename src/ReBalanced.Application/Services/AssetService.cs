@@ -1,6 +1,5 @@
 ﻿using ReBalanced.Application.Services.Interfaces;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities;
 using ReBalanced.Domain.Providers;
 
 namespace ReBalanced.Application.Services;
@@ -18,7 +17,7 @@ public class AssetService : IAssetService
     {
         return await _assetRepository.GetValue(holding.AssetTicker) * holding.Quantity;
     }
-    
+
     public decimal TotalValue(IEnumerable<Holding> holdings)
     {
         return holdings.Sum(x => _assetRepository.GetValue(x.AssetTicker).Result * x.Quantity);

@@ -1,8 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using ReBalanced.Application.Services.Interfaces;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities;
-using ReBalanced.Domain.Entities.Aggregates;
 using ReBalanced.Domain.Providers;
 
 namespace ReBalanced.Application.Services;

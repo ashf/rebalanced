@@ -20,3 +20,6 @@ src/ReBalanced.Infastructure/appsettings.Development.json
 tests/ReBalanced.Infrastructure.Tests/bin
 tests/ReBalanced.Infrastructure.Tests/obj
 tests/ReBalanced.Infrastructure.Tests/appsettings.development.json
+src/ReBalanced.Infrastructure/bin
+src/ReBalanced.Infrastructure/obj
+src/ReBalanced.Infrastructure/appsettings.Development.json

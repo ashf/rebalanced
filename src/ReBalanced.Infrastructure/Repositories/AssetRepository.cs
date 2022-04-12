@@ -2,7 +2,6 @@
 using ReBalanced.Domain.Providers;
 using ReBalanced.Domain.ValueTypes;
 using ReBalanced.Infastructure.MBoum;
-using Refit;
 
 namespace ReBalanced.Infrastructure.Repositories;
 
@@ -10,14 +9,14 @@ public class AssetRepository : IAssetRepository
 {
     private readonly Dictionary<string, Asset> _assetCache = new();
     private readonly IConfiguration _configuration;
-    private IMBoumApi _mBoumApi;
     private DateTime? _lastCacheRefresh;
-    private TimeSpan _staleTime = TimeSpan.FromHours(1);
+    private readonly IMBoumApi _mBoumApi;
+    private readonly TimeSpan _staleTime = TimeSpan.FromHours(1);
 
     public AssetRepository(IConfiguration configuration, IMBoumApi mBoumApi)
     {
         _configuration = configuration;
-        _mBoumApi = mBoumApi;//RestService.For<IMBoumApi>("https://mboum.com/api/v1");
+        _mBoumApi = mBoumApi; //RestService.For<IMBoumApi>("https://mboum.com/api/v1");
     }
 
     public async Task<Asset> Get(string assetTicker)
@@ -39,36 +38,34 @@ public class AssetRepository : IAssetRepository
 
     public async Task UpdateValues()
     {
-        if ((_lastCacheRefresh is null) || ((DateTime.UtcNow - _lastCacheRefresh.Value) > _staleTime))
+        if (_lastCacheRefresh is null || DateTime.UtcNow - _lastCacheRefresh.Value > _staleTime)
         {
             await UpdateStocks();
             await UpdateCrpyto();
+
+            _lastCacheRefresh = DateTime.UtcNow;
         }
     }
-    
+
     private async Task UpdateStocks()
     {
         var stockAssets = _assetCache
             .Where(x => x.Value.AssetType == AssetType.Stock)
             .Select(x => x.Key);
-            
+
         var stockList = string.Join(',', stockAssets);
 
-        var stockQuotes = await _mBoumApi.GetStockQuotes(_configuration["MBOUM:API_KEY"],stockList);
-            
+        var stockQuotes = await _mBoumApi.GetStockQuotes(_configuration["MBOUM:API_KEY"], stockList);
+
+        if (stockQuotes.Data is null) return;
+
         foreach (var quote in stockQuotes.Data)
-        {
-            if (_assetCache.ContainsKey(quote.Symbol))
-            {
-                _assetCache[quote.Symbol] = _assetCache[quote.Symbol] with { Value = (decimal) quote.Ask };
-            }
+            if (_assetCache.ContainsKey(quote.Symbol!))
+                _assetCache[quote.Symbol!] = _assetCache[quote.Symbol!] with {Value = (decimal) quote.Ask};
             else
-            {
-                _assetCache[quote.Symbol] = new Asset(quote.Symbol, (decimal) quote.Ask, AssetType.Stock, false);
-            }
-        }
+                _assetCache[quote.Symbol!] = new Asset(quote.Symbol!, (decimal) quote.Ask, AssetType.Stock, false);
     }
-    
+
     private async Task UpdateCrpyto()
     {
         var crpytoAssets = _assetCache
@@ -77,16 +74,18 @@ public class AssetRepository : IAssetRepository
 
         foreach (var crpytoAsset in crpytoAssets)
         {
-            var cryptoAsset = await _mBoumApi.GetCoinQuote(_configuration["MBOUM:API_KEY"],crpytoAsset);
-                
-            if (_assetCache.ContainsKey(cryptoAsset.Meta.Key))
-            {
-                _assetCache[cryptoAsset.Meta.Key] = _assetCache[cryptoAsset.Meta.Key] with { Value = (decimal) cryptoAsset.Data.Price };
-            }
+            var cryptoQuote = await _mBoumApi.GetCoinQuote(_configuration["MBOUM:API_KEY"], crpytoAsset);
+
+            if (cryptoQuote.Meta is null || cryptoQuote.Data is null) return;
+
+            if (_assetCache.ContainsKey(cryptoQuote.Meta.Key!))
+                _assetCache[cryptoQuote.Meta.Key!] = _assetCache[cryptoQuote.Meta.Key!] with
+                {
+                    Value = (decimal) cryptoQuote.Data.Price
+                };
             else
-            {
-                _assetCache[cryptoAsset.Meta.Key] = new Asset(cryptoAsset.Meta.Key, (decimal) cryptoAsset.Data.Price, AssetType.Crypto);
-            }
+                _assetCache[cryptoQuote.Meta.Key!] = new Asset(cryptoQuote.Meta.Key!, (decimal) cryptoQuote.Data.Price,
+                    AssetType.Crypto);
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities.Aggregates;
 
 namespace ReBalanced.Application.Services.Interfaces;
 

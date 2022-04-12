@@ -20,7 +20,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\ReBalanced.Application\ReBalanced.Application.csproj" />
-        <ProjectReference Include="..\..\src\ReBalanced.Infastructure\ReBalanced.Infastructure.csproj" />
+        <ProjectReference Include="..\..\src\ReBalanced.Infrastructure\ReBalanced.Infrastructure.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -11,6 +11,7 @@ public class StockQuotes
 public class StockData
 {
     public double Ask { get; set; }
+
     // public long AskSize { get; set; }
     // public long AverageDailyVolume10Day { get; set; }
     // public long AverageDailyVolume3Month { get; set; }
@@ -84,4 +85,7 @@ public class DividendDate
     public Timezone Timezone { get; set; }
 }
 
-public enum Timezone { The0000 };
+public enum Timezone
+{
+    The0000
+}

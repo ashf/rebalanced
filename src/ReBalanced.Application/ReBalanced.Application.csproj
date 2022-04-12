@@ -7,23 +7,23 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Ardalis.GuardClauses" Version="4.0.0" />
-        <PackageReference Include="Google.OrTools" Version="9.2.9972" />
-        <PackageReference Include="UnitsNet" Version="4.121.0" />
+        <PackageReference Include="Ardalis.GuardClauses" Version="4.0.0"/>
+        <PackageReference Include="Google.OrTools" Version="9.2.9972"/>
+        <PackageReference Include="UnitsNet" Version="4.121.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ReBalanced.Domain\ReBalanced.Domain.csproj" />
-        <ProjectReference Include="..\ReBalanced.Infastructure\ReBalanced.Infastructure.csproj" />
+        <ProjectReference Include="..\ReBalanced.Domain\ReBalanced.Domain.csproj"/>
+        <ProjectReference Include="..\ReBalanced.Infrastructure\ReBalanced.Infrastructure.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60">
-        <HintPath>..\..\..\..\Users\asher\.dotnet\shared\Microsoft.AspNetCore.App\6.0.3\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
-      </Reference>
-      <Reference Include="Refit, Version=6.3.0.0, Culture=neutral, PublicKeyToken=2f9b1262776509f5">
-        <HintPath>..\..\..\..\Users\asher\.nuget\packages\refit\6.3.2\lib\net6.0\Refit.dll</HintPath>
-      </Reference>
+        <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60">
+            <HintPath>..\..\..\..\Users\asher\.dotnet\shared\Microsoft.AspNetCore.App\6.0.3\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+        </Reference>
+        <Reference Include="Refit, Version=6.3.0.0, Culture=neutral, PublicKeyToken=2f9b1262776509f5">
+            <HintPath>..\..\..\..\Users\asher\.nuget\packages\refit\6.3.2\lib\net6.0\Refit.dll</HintPath>
+        </Reference>
     </ItemGroup>
 
 </Project>

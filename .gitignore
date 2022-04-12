@@ -16,3 +16,7 @@ src/ReBalanced.API/appsettings.Development.json
 .idea
 ReBalanced.sln.DotSettings.user
 tests/ReBalanced.Application.Tests/RebalanceServiceTestPrivate.cs
+src/ReBalanced.Infastructure/appsettings.Development.json
+tests/ReBalanced.Infrastructure.Tests/bin
+tests/ReBalanced.Infrastructure.Tests/obj
+tests/ReBalanced.Infrastructure.Tests/appsettings.development.json

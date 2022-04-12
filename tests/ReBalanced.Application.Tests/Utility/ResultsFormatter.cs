@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Entities;
 using Xunit.Abstractions;
 

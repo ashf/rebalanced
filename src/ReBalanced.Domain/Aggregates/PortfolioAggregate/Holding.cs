@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
+using ReBalanced.Domain.Entities;
 
-namespace ReBalanced.Domain.Entities;
+namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 public class Holding : BaseEntity
 {

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Entities.Aggregates;
 
 namespace ReBalanced.Infastructure.EntityConfigurations;

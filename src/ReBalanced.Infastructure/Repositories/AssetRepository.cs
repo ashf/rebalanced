@@ -1,20 +1,23 @@
-﻿using ReBalanced.Domain.Providers;
+﻿using Microsoft.Extensions.Configuration;
+using ReBalanced.Domain.Providers;
 using ReBalanced.Domain.ValueTypes;
 using ReBalanced.Infastructure.MBoum;
 using Refit;
 
-namespace ReBalanced.Infastructure.Repositories;
+namespace ReBalanced.Infrastructure.Repositories;
 
 public class AssetRepository : IAssetRepository
 {
     private readonly Dictionary<string, Asset> _assetCache = new();
-    private IMBoumApi _iMBoumApi;
+    private readonly IConfiguration _configuration;
+    private IMBoumApi _mBoumApi;
     private DateTime? _lastCacheRefresh;
     private TimeSpan _staleTime = TimeSpan.FromHours(1);
 
-    public AssetRepository(IMBoumApi iMBoumApi)
+    public AssetRepository(IConfiguration configuration, IMBoumApi mBoumApi)
     {
-        _iMBoumApi = iMBoumApi;//RestService.For<IMBoumApi>("https://mboum.com/api/v1");
+        _configuration = configuration;
+        _mBoumApi = mBoumApi;//RestService.For<IMBoumApi>("https://mboum.com/api/v1");
     }
 
     public async Task<Asset> Get(string assetTicker)
@@ -51,17 +54,17 @@ public class AssetRepository : IAssetRepository
             
         var stockList = string.Join(',', stockAssets);
 
-        var stockQuotes = await _iMBoumApi.GetStockQuotes(stockList);
+        var stockQuotes = await _mBoumApi.GetStockQuotes(_configuration["MBOUM:API_KEY"],stockList);
             
         foreach (var quote in stockQuotes.Data)
         {
             if (_assetCache.ContainsKey(quote.Symbol))
             {
-                _assetCache[quote.Symbol] = _assetCache[quote.Symbol] with { Value = quote.Ask };
+                _assetCache[quote.Symbol] = _assetCache[quote.Symbol] with { Value = (decimal) quote.Ask };
             }
             else
             {
-                _assetCache[quote.Symbol] = new Asset(quote.Symbol, quote.Ask, AssetType.Stock, false);
+                _assetCache[quote.Symbol] = new Asset(quote.Symbol, (decimal) quote.Ask, AssetType.Stock, false);
             }
         }
     }
@@ -74,15 +77,15 @@ public class AssetRepository : IAssetRepository
 
         foreach (var crpytoAsset in crpytoAssets)
         {
-            var cryptoAsset = await _iMBoumApi.GetCoinQuote(crpytoAsset);
+            var cryptoAsset = await _mBoumApi.GetCoinQuote(_configuration["MBOUM:API_KEY"],crpytoAsset);
                 
             if (_assetCache.ContainsKey(cryptoAsset.Meta.Key))
             {
-                _assetCache[cryptoAsset.Meta.Key] = _assetCache[cryptoAsset.Meta.Key] with { Value = cryptoAsset.Data.Price };
+                _assetCache[cryptoAsset.Meta.Key] = _assetCache[cryptoAsset.Meta.Key] with { Value = (decimal) cryptoAsset.Data.Price };
             }
             else
             {
-                _assetCache[cryptoAsset.Meta.Key] = new Asset(cryptoAsset.Meta.Key, cryptoAsset.Data.Price, AssetType.Crypto);
+                _assetCache[cryptoAsset.Meta.Key] = new Asset(cryptoAsset.Meta.Key, (decimal) cryptoAsset.Data.Price, AssetType.Crypto);
             }
         }
     }

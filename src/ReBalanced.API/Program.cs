@@ -8,10 +8,10 @@ using Microsoft.OpenApi.Models;
 using ReBalanced.API.Middleware;
 using ReBalanced.Application.Services;
 using ReBalanced.Application.Services.Interfaces;
-using ReBalanced.Domain.Entities;
+using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
 using ReBalanced.Infastructure;
-using ReBalanced.Infastructure.Providers;
+using ReBalanced.Infrastructure.Providers;
 using Serilog;
 using Serilog.Events;
 
@@ -52,7 +52,6 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 
 // Infastructure Layer repositories
-builder.Services.AddScoped<IEntityRepository<Holding>, HoldingRepository>();
 builder.Services.AddScoped<IEntityRepository<Portfolio>, PortfolioRepository>();
 
 // Infastructure Layer DB context

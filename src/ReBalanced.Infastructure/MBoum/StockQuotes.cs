@@ -10,71 +10,71 @@ public class StockQuotes
 
 public class StockData
 {
-    public decimal Ask { get; set; }
-    public long AskSize { get; set; }
-    public long AverageDailyVolume10Day { get; set; }
-    public long AverageDailyVolume3Month { get; set; }
-    public decimal Bid { get; set; }
-    public long BidSize { get; set; }
-    public decimal BookValue { get; set; }
-    public string? Currency { get; set; }
-    public DividendDate? DividendDate { get; set; }
-    public DividendDate? EarningsTimestamp { get; set; }
-    public DividendDate? EarningsTimestampStart { get; set; }
-    public DividendDate? EarningsTimestampEnd { get; set; }
-    public decimal EpsForward { get; set; }
-    public decimal EpsTrailingTwelveMonths { get; set; }
-    public string? Exchange { get; set; }
-    public long ExchangeDataDelayedBy { get; set; }
-    public string? ExchangeTimezoneName { get; set; }
-    public string? ExchangeTimezoneShortName { get; set; }
-    public decimal FiftyDayAverage { get; set; }
-    public decimal FiftyDayAverageChange { get; set; }
-    public decimal FiftyDayAverageChangePercent { get; set; }
-    public decimal FiftyTwoWeekHigh { get; set; }
-    public decimal FiftyTwoWeekHighChange { get; set; }
-    public decimal FiftyTwoWeekHighChangePercent { get; set; }
-    public decimal FiftyTwoWeekLow { get; set; }
-    public decimal FiftyTwoWeekLowChange { get; set; }
-    public decimal FiftyTwoWeekLowChangePercent { get; set; }
-    public string? FinancialCurrency { get; set; }
-    public decimal ForwardPe { get; set; }
-    public string? FullExchangeName { get; set; }
-    public long GmtOffSetMilliseconds { get; set; }
-    public string? Language { get; set; }
-    public string? LongName { get; set; }
-    public string? Market { get; set; }
-    public long MarketCap { get; set; }
-    public string? MarketState { get; set; }
-    public string? MessageBoardId { get; set; }
-    public decimal PostMarketChange { get; set; }
-    public decimal PostMarketChangePercent { get; set; }
-    public decimal PostMarketPrice { get; set; }
-    public DividendDate? PostMarketTime { get; set; }
-    public long PriceHint { get; set; }
-    public decimal PriceToBook { get; set; }
-    public string? QuoteSourceName { get; set; }
-    public string? QuoteType { get; set; }
-    public decimal RegularMarketChange { get; set; }
-    public decimal RegularMarketChangePercent { get; set; }
-    public decimal RegularMarketDayHigh { get; set; }
-    public decimal RegularMarketDayLow { get; set; }
-    public decimal RegularMarketOpen { get; set; }
-    public decimal RegularMarketPreviousClose { get; set; }
-    public decimal RegularMarketPrice { get; set; }
-    public DividendDate? RegularMarketTime { get; set; }
-    public long RegularMarketVolume { get; set; }
-    public long SharesOutstanding { get; set; }
-    public string? ShortName { get; set; }
-    public long SourceInterval { get; set; }
+    public double Ask { get; set; }
+    // public long AskSize { get; set; }
+    // public long AverageDailyVolume10Day { get; set; }
+    // public long AverageDailyVolume3Month { get; set; }
+    // public double Bid { get; set; }
+    // public long BidSize { get; set; }
+    // public double BookValue { get; set; }
+    // public string? Currency { get; set; }
+    // public DividendDate? DividendDate { get; set; }
+    // public DividendDate? EarningsTimestamp { get; set; }
+    // public DividendDate? EarningsTimestampStart { get; set; }
+    // public DividendDate? EarningsTimestampEnd { get; set; }
+    // public double EpsForward { get; set; }
+    // public double EpsTrailingTwelveMonths { get; set; }
+    // public string? Exchange { get; set; }
+    // public long ExchangeDataDelayedBy { get; set; }
+    // public string? ExchangeTimezoneName { get; set; }
+    // public string? ExchangeTimezoneShortName { get; set; }
+    // public double FiftyDayAverage { get; set; }
+    // public double FiftyDayAverageChange { get; set; }
+    // public double FiftyDayAverageChangePercent { get; set; }
+    // public double FiftyTwoWeekHigh { get; set; }
+    // public double FiftyTwoWeekHighChange { get; set; }
+    // public double FiftyTwoWeekHighChangePercent { get; set; }
+    // public double FiftyTwoWeekLow { get; set; }
+    // public double FiftyTwoWeekLowChange { get; set; }
+    // public double FiftyTwoWeekLowChangePercent { get; set; }
+    // public string? FinancialCurrency { get; set; }
+    // public double ForwardPe { get; set; }
+    // public string? FullExchangeName { get; set; }
+    // public long GmtOffSetMilliseconds { get; set; }
+    // public string? Language { get; set; }
+    // public string? LongName { get; set; }
+    // public string? Market { get; set; }
+    // public long MarketCap { get; set; }
+    // public string? MarketState { get; set; }
+    // public string? MessageBoardId { get; set; }
+    // public double PostMarketChange { get; set; }
+    // public double PostMarketChangePercent { get; set; }
+    // public double PostMarketPrice { get; set; }
+    // public DividendDate? PostMarketTime { get; set; }
+    // public long PriceHint { get; set; }
+    // public double PriceToBook { get; set; }
+    // public string? QuoteSourceName { get; set; }
+    // public string? QuoteType { get; set; }
+    // public double RegularMarketChange { get; set; }
+    // public double RegularMarketChangePercent { get; set; }
+    // public double RegularMarketDayHigh { get; set; }
+    // public double RegularMarketDayLow { get; set; }
+    // public double RegularMarketOpen { get; set; }
+    // public double RegularMarketPreviousClose { get; set; }
+    // public double RegularMarketPrice { get; set; }
+    // public DividendDate? RegularMarketTime { get; set; }
+    // public long RegularMarketVolume { get; set; }
+    // public long SharesOutstanding { get; set; }
+    // public string? ShortName { get; set; }
+    // public long SourceInterval { get; set; }
     public string? Symbol { get; set; }
-    public bool Tradeable { get; set; }
-    public decimal TrailingAnnualDividendRate { get; set; }
-    public decimal TrailingAnnualDividendYield { get; set; }
-    public decimal TrailingPe { get; set; }
-    public decimal TwoHundredDayAverage { get; set; }
-    public decimal TwoHundredDayAverageChange { get; set; }
-    public decimal TwoHundredDayAverageChangePercent { get; set; }
+    // public bool Tradeable { get; set; }
+    // public double TrailingAnnualDividendRate { get; set; }
+    // public double TrailingAnnualDividendYield { get; set; }
+    // public double TrailingPe { get; set; }
+    // public double TwoHundredDayAverage { get; set; }
+    // public double TwoHundredDayAverageChange { get; set; }
+    // public double TwoHundredDayAverageChangePercent { get; set; }
 }
 
 public class DividendDate

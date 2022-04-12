@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Castle.Core.Logging;
 using NSubstitute;
 using ReBalanced.Application.Services;
 using ReBalanced.Application.Tests.Utility;
+using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Entities;
 using ReBalanced.Domain.Entities.Aggregates;
 using ReBalanced.Domain.Providers;
@@ -70,7 +70,7 @@ public class RebalanceServiceTest
             {"CASH", .1M}
         };
 
-        portfolio.UpdateAllocations(allocations.Select(x => new Allocation(x.Key, x.Value)).ToList());
+        portfolio.SetAllocation(allocations.Select(x => new Allocation(x.Key, x.Value)).ToList());
 
         // Act
         var rebalanceResults = await rebalanceService.Rebalance(portfolio);

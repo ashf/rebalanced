@@ -1,6 +1,8 @@
 ﻿using Ardalis.GuardClauses;
+using ReBalanced.Domain.Entities;
+using ReBalanced.Domain.Entities.Aggregates;
 
-namespace ReBalanced.Domain.Entities.Aggregates;
+namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 public enum AccountType
 {
@@ -19,6 +21,16 @@ public enum HoldingType
 public class Account : BaseEntity, IAggregateRoot
 {
     private readonly Dictionary<string, Holding> _holdings = new();
+
+    public string Name { get; }
+    public AccountType AccountType { get; }
+    public HoldingType HoldingType { get; }
+
+    public IEnumerable<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
+
+    public HashSet<string> PriorityAssets { get; set; }
+    public HashSet<string> UndesiredAssets { get; set; }
+    public HashSet<string> PermissibleAssets { get; set; }
 
     public Account(string name, AccountType accountType, HoldingType holdingType, HashSet<string> permissibleAssets)
     {
@@ -47,16 +59,6 @@ public class Account : BaseEntity, IAggregateRoot
             _ => throw new NotImplementedException()
         };
     }
-
-    public string Name { get; }
-    public AccountType AccountType { get; }
-    public HoldingType HoldingType { get; }
-
-    public IEnumerable<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
-
-    public HashSet<string> PriorityAssets { get; set; }
-    public HashSet<string> UndesiredAssets { get; set; }
-    public HashSet<string> PermissibleAssets { get; set; }
 
     public void AddHolding(Holding holding)
     {

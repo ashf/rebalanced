@@ -48,7 +48,6 @@ builder.Services.AddControllers()
     });
 
 // Application Layer services
-builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 
 // Infastructure Layer repositories

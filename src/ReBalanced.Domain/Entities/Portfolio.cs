@@ -17,20 +17,6 @@ public class Portfolio : BaseEntity
     public Dictionary<Guid, Account> Accounts { get; } = new();
     public Dictionary<string, Allocation> Allocations { get; private set; } = new();
 
-    public IReadOnlyCollection<Holding> Holdings
-    {
-        get
-        {
-            var holdings = new List<Holding>();
-
-            var accountsHoldings = Accounts.Values.Select(x => x.Holdings);
-
-            foreach (var accountHoldings in accountsHoldings) holdings.AddRange(accountHoldings);
-
-            return holdings.AsReadOnly();
-        }
-    }
-
     public void UpdateAllocations(ICollection<Allocation> newAllocationRules)
     {
         Guard.Against.InvalidInput(

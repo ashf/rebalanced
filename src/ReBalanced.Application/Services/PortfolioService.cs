@@ -56,7 +56,7 @@ public class PortfolioService : IPortfolioService
 
         Guard.Against.Null(portfolio, nameof(portfolio));
 
-        var reblanceResult = await _rebalanceService.Rebalance(portfolio);
+        var reblanceResult = _rebalanceService.Rebalance(portfolio);
 
         // TODO: do something with result
     }

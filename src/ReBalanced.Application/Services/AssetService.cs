@@ -13,8 +13,13 @@ public class AssetService : IAssetService
         _assetRepository = assetRepository;
     }
 
+    public async Task<decimal> Value(Holding holding)
+    {
+        return await _assetRepository.GetValue(holding.AssetTicker) * holding.Quantity;
+    }
+    
     public decimal TotalValue(IEnumerable<Holding> holdings)
     {
-        return holdings.Sum(x => _assetRepository.GetValue(x.AssetTicker) * x.Quantity);
+        return holdings.Sum(x => _assetRepository.GetValue(x.AssetTicker).Result * x.Quantity);
     }
 }

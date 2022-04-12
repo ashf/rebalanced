@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Castle.Core.Logging;
 using NSubstitute;
 using ReBalanced.Application.Services;
 using ReBalanced.Application.Tests.Utility;
@@ -32,12 +33,14 @@ public class RebalanceServiceTest
         assetRepository.GetValue(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()].Value);
         assetRepository.GetAllTickers().Returns(_assetsInMemory.Keys.ToHashSet());
 
+        var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger>();
+        
         var assetService = new AssetService(assetRepository);
-        var rebalanceService = new RebalanceService(assetService, assetRepository);
+        var rebalanceService = new RebalanceService(assetService, assetRepository, logger);
 
         var allAssetTickersNoCryptoProperty = assetRepository.GetAllTickers();
-        allAssetTickersNoCryptoProperty.Remove("BTC");
-        allAssetTickersNoCryptoProperty.Remove("ETH");
+        allAssetTickersNoCryptoProperty.Remove("bitcoin");
+        allAssetTickersNoCryptoProperty.Remove("ethereum");
         allAssetTickersNoCryptoProperty.Remove("Property");
 
         var portfolio = new Portfolio("Asher's Portfolio");

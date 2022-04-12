@@ -4,8 +4,8 @@ namespace ReBalanced.Domain.Providers;
 
 public interface IAssetRepository
 {
-    Asset Get(string assetTicker);
-    decimal GetValue(string assetTicker);
+    Task<Asset> Get(string assetTicker);
+    Task<decimal> GetValue(string assetTicker);
     HashSet<string> GetAllTickers();
-    void UpdateValues();
+    Task UpdateValues();
 }

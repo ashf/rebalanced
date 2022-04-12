@@ -3,10 +3,10 @@
 public enum AssetType
 {
     Stock,
-    Crpyto,
+    Crypto,
     Cash,
     Property
 }
 
 public record Asset(string Ticker, decimal Value, AssetType AssetType, bool Fractional = true,
-    string EquivalentTicker = null);
+    string EquivalentTicker = null!);

@@ -12,6 +12,9 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReBalanced.Domain", "src\ReBalanced.Domain\ReBalanced.Domain.csproj", "{64241147-398A-43DB-BB36-BA8B641932AF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FD549D0D-4E0C-4ABF-ADB4-5A2C02E6196E}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{01342975-4BF4-43D8-805D-1449B037E5E0}"
 EndProject

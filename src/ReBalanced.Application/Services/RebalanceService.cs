@@ -27,10 +27,13 @@ public class RebalanceService : IRebalanceService
 
     public async Task<Dictionary<string, decimal>> Rebalance(Portfolio portfolio)
     {
-        var portfolioTotal = portfolio.Accounts.Values.Sum(account => _assetService.TotalValue(account.Holdings));
+        var portfolioTotal = 
+            portfolio.Accounts.Values.Sum(account => _assetService.TotalValue(account, account.AllowFractional));
 
         var targetValuePerAsset =
-            portfolio.Allocations.ToDictionary(x => x.Key, x => x.Value.Percentage * portfolioTotal);
+            portfolio.Allocations.ToDictionary(
+                x => x.Key, 
+                x => x.Value.Percentage * portfolioTotal);
 
         var tolerance = 0.00;
 
@@ -45,6 +48,7 @@ public class RebalanceService : IRebalanceService
             var (solver, constraints, optimization) =
                 await SetupSystem(targetValuePerAsset, portfolio.Accounts.Values, tolerance);
 
+            _logger.LogInformation("{iteration}", iterations);
             (resultStatus, resultValues) = SolveSystem(solver, constraints, optimization);
 
             objectiveValue = solver.Objective().Value();
@@ -62,7 +66,31 @@ public class RebalanceService : IRebalanceService
             _logger.LogDebug("Objective value = {objectiveValue}", objectiveValue);
         }
 
+        AddFractionalsToResults(portfolio, resultValues);
+
         return resultValues;
+    }
+
+    private static void AddFractionalsToResults(Portfolio portfolio, Dictionary<string, decimal> resultValues)
+    {
+        // add back in fractionals
+        foreach (var (resultKey, resultValue) in resultValues)
+        {
+            var assetName = resultKey.Split('_')[0];
+            var accountName = resultKey.Split('_')[1];
+
+            var account = portfolio.Accounts.Values.First(x => x.Name == accountName);
+            Guard.Against.Null(account, nameof(account));
+
+            if (account.AllowFractional) continue;
+
+            var holding = account.Holdings.FirstOrDefault(x => x.AssetTicker == assetName);
+            if (holding is null) continue;
+
+            var fraction = holding.Quantity - Math.Truncate(holding.Quantity);
+
+            resultValues[resultKey] = resultValue + fraction;
+        }
     }
 
     private async Task<(Solver solver, List<LinearConstraint> constraints, LinearExpr? optimization)>
@@ -97,9 +125,9 @@ public class RebalanceService : IRebalanceService
 
                 var varName = GenerateVariableName(assetName, account.Name);
                 variables.Add(varName,
-                    !account.AllowFractional || (asset.AssetType != AssetType.Cash)
-                        ? solver.MakeIntVar(0.0, int.MaxValue, varName)
-                        : solver.MakeNumVar(0.0, double.MaxValue, varName));
+                    account.AllowFractional || (asset.AssetType == AssetType.Cash)
+                        ? solver.MakeNumVar(0.0, double.MaxValue, varName)
+                        : solver.MakeIntVar(0.0, int.MaxValue, varName));
             }
         }
 
@@ -124,7 +152,7 @@ public class RebalanceService : IRebalanceService
                 AddExpr(ref expr, localExpr);
             }
 
-            if (expr is not null) constraints.Add((double) _assetService.TotalValue(account.Holdings) == expr);
+            if (expr is not null) constraints.Add((double) _assetService.TotalValue(account, account.AllowFractional) == expr);
         }
 
         return constraints;
@@ -143,35 +171,7 @@ public class RebalanceService : IRebalanceService
             var asset = await _assetRepository.Get(assetName);
             Guard.Against.Null(asset, nameof(asset));
 
-            LinearExpr? expr = null;
-            foreach (var account in accounts)
-            {
-                if (!account.PermissibleAssets.Contains(assetName))
-                {
-                    if (asset.EquivalentTicker is not null &&
-                        !account.PermissibleAssets.Contains(asset.EquivalentTicker)) continue;
-                    if (asset.EquivalentTicker is null) continue;
-                }
-
-                if (assetName == "CASH" && account.UndesiredAssets.Contains("CASH")) continue;
-
-                var assetValue = (double) asset.Value;
-
-                if (asset.EquivalentTicker is not null && account.PermissibleAssets.Contains(asset.EquivalentTicker))
-                {
-                    var equivAsset = await _assetRepository.Get(asset.EquivalentTicker);
-                    Guard.Against.Null(equivAsset, nameof(equivAsset));
-
-                    var localExpr = (double) equivAsset.Value / assetValue *
-                                    variables[GenerateVariableName(equivAsset.Ticker, account.Name)];
-                    AddExpr(ref expr, localExpr);
-                }
-                else
-                {
-                    var localExpr = assetValue * variables[GenerateVariableName(assetName, account.Name)];
-                    AddExpr(ref expr, localExpr);
-                }
-            }
+            var expr = await GenerateTargetAmountConstraintPerAsset(accounts, variables, asset);
 
             if (expr is null) continue;
             constraints.Add(expr >= (double) targetValuePerAsset[assetName] * (1 - tolerance));
@@ -180,7 +180,45 @@ public class RebalanceService : IRebalanceService
 
         return constraints;
     }
-    
+
+    // a * VTI + e * VTI
+    private async Task<LinearExpr?> GenerateTargetAmountConstraintPerAsset(
+        IEnumerable<Account> accounts, IReadOnlyDictionary<string, Variable> variables,
+        Asset asset)
+    {
+        LinearExpr? expr = null;
+        
+        foreach (var account in accounts)
+        {
+            // dont create constraint for cash if undesired
+            if (asset.AssetType == AssetType.Cash && account.UndesiredAssets.Contains("CASH")) continue;
+            
+            var assetValue = (double) asset.Value;
+            
+            if (account.PermissibleAssets.Contains(asset.Ticker))
+            {
+                var localExpr = assetValue * variables[GenerateVariableName(asset.Ticker, account.Name)];
+                AddExpr(ref expr, localExpr);
+            }
+            else
+            {
+                // check if EquivalentTicker is allowed (if asset isn't)
+                if (asset.EquivalentTicker is not null &&
+                    !account.PermissibleAssets.Contains(asset.EquivalentTicker)) continue;
+                if (asset.EquivalentTicker is null) continue;
+                
+                var equivAsset = await _assetRepository.Get(asset.EquivalentTicker);
+                Guard.Against.Null(equivAsset, nameof(equivAsset));
+
+                var localEquivExpr = (double) equivAsset.Value / assetValue *
+                                     variables[GenerateVariableName(equivAsset.Ticker, account.Name)];
+                AddExpr(ref expr, localEquivExpr);
+            }
+        }
+
+        return expr;
+    }
+
     // b + g + h - cash1 - cash2;
     private static LinearExpr? GenerateOptimization(
         IEnumerable<Account> accounts, IReadOnlyDictionary<string, Variable> variables)
@@ -191,6 +229,8 @@ public class RebalanceService : IRebalanceService
         {
             foreach (var assetName in account.PriorityAssets)
             {
+                if (!account.PermissibleAssets.Contains(assetName)) continue;
+             
                 var localExpr = variables[GenerateVariableName(assetName, account.Name)];
                 if (optimization is null) optimization = localExpr;
                 else optimization += localExpr;
@@ -198,6 +238,8 @@ public class RebalanceService : IRebalanceService
 
             foreach (var assetName in account.UndesiredAssets)
             {
+                if (!account.PermissibleAssets.Contains(assetName)) continue;
+                
                 var localExpr = variables[GenerateVariableName(assetName, account.Name)];
                 if (optimization is null) optimization = localExpr;
                 else optimization -= localExpr;

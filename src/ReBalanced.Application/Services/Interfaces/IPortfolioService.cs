@@ -1,4 +1,4 @@
-﻿using ReBalanced.Domain.Entities;
+﻿using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 namespace ReBalanced.Application.Services.Interfaces;
 

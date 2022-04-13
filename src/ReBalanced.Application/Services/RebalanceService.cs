@@ -1,29 +1,31 @@
 ﻿using Ardalis.GuardClauses;
 using Google.OrTools.LinearSolver;
+using Microsoft.Extensions.Logging;
 using ReBalanced.Application.Services.Interfaces;
-using ReBalanced.Domain.Entities;
-using ReBalanced.Domain.Entities.Aggregates;
+using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
+using ReBalanced.Domain.ValueTypes;
 
 namespace ReBalanced.Application.Services;
-
-internal record VariableWrapper(Variable Variable, string AccountName, string AssetName);
 
 public class RebalanceService : IRebalanceService
 {
     private const int MaxIterations = 100;
     private readonly IAssetRepository _assetRepository;
     private readonly IAssetService _assetService;
+    private readonly ILogger _logger;
 
     public RebalanceService(
         IAssetService assetService,
-        IAssetRepository assetRepository)
+        IAssetRepository assetRepository,
+        ILogger logger)
     {
         _assetService = assetService;
         _assetRepository = assetRepository;
+        _logger = logger;
     }
 
-    public async Task<Dictionary<string, decimal>?> Rebalance(Portfolio portfolio)
+    public async Task<Dictionary<string, decimal>> Rebalance(Portfolio portfolio)
     {
         var portfolioTotal = portfolio.Accounts.Values.Sum(account => _assetService.TotalValue(account.Holdings));
 
@@ -33,14 +35,15 @@ public class RebalanceService : IRebalanceService
         var tolerance = 0.00;
 
         var resultStatus = Solver.ResultStatus.NOT_SOLVED;
-        Dictionary<string, decimal>? resultValues = default;
+        var resultValues = new Dictionary<string, decimal>();
+        
         double objectiveValue = 0;
         var iterations = 0;
 
         while ((resultStatus != Solver.ResultStatus.OPTIMAL || objectiveValue <= 0) && iterations <= MaxIterations)
         {
             var (solver, constraints, optimization) =
-                SetupSystem(targetValuePerAsset, portfolio.Accounts.Values, tolerance);
+                await SetupSystem(targetValuePerAsset, portfolio.Accounts.Values, tolerance);
 
             (resultStatus, resultValues) = SolveSystem(solver, constraints, optimization);
 
@@ -53,76 +56,95 @@ public class RebalanceService : IRebalanceService
         // Check that the problem has an optimal solution.
         if (resultStatus == Solver.ResultStatus.OPTIMAL)
         {
-            Console.WriteLine("Solution:");
-            Console.WriteLine($"iterations = {iterations}");
-            Console.WriteLine($"tolerance = {tolerance}");
-            Console.WriteLine("Objective value = " + objectiveValue);
+            _logger.LogDebug("Solution:");
+            _logger.LogDebug("iterations = {iterations}", iterations);
+            _logger.LogDebug("tolerance = {tolerance}", tolerance);
+            _logger.LogDebug("Objective value = {objectiveValue}", objectiveValue);
         }
-
-        //foreach (var asset in targetValuePerAsset)
-        //{
-        //    decimal targetAmount = 0;
-        //    foreach (var account in portfolio.Accounts)
-        //    {
-        //        if (!account.PermissibleAssets.Contains(asset.Key)) continue;
-
-        //        var varName = GenerateVariableName(asset.Key, account.Name);
-        //        targetAmount += resultValues[varName];
-        //    }
-        //}
 
         return resultValues;
     }
 
-    private (Solver solver, IEnumerable<LinearConstraint>? constraints, LinearExpr? optimization)
+    private async Task<(Solver solver, List<LinearConstraint> constraints, LinearExpr? optimization)>
         SetupSystem(
             IReadOnlyDictionary<string, decimal> targetValuePerAsset,
-            IEnumerable<Account> accounts,
+            ICollection<Account> accounts,
             double tolerance)
     {
         var solver = Solver.CreateSolver("SCIP");
 
-        var variables = new Dictionary<string, VariableWrapper>();
+        var variables = await PopulateVariables(accounts, solver);
 
         var constraints = new List<LinearConstraint>();
+        constraints.AddRange(await GeneratePermissibleAssetsConstraints(accounts, variables));
+        constraints.AddRange(await GenerateTargetAmountConstraints(targetValuePerAsset, accounts, tolerance, variables));
 
-        var enumeratedAccounts = accounts.ToList();
-        foreach (var account in enumeratedAccounts)
-        foreach (var assetName in account.PermissibleAssets)
+        var optimization = GenerateOptimization(accounts, variables);
+
+        return (solver, constraints, optimization);
+    }
+
+    private async Task<Dictionary<string, Variable>> PopulateVariables(IEnumerable<Account> accounts, Solver solver)
+    {
+        var variables = new Dictionary<string, Variable>();
+        
+        foreach (var account in accounts)
         {
-            var asset = _assetRepository.Get(assetName);
-            var varName = GenerateVariableName(assetName, account.Name);
-            variables.Add(varName,
-                !asset.Fractional
-                    ? new VariableWrapper(solver.MakeIntVar(0.0, int.MaxValue, varName), account.Name,
-                        assetName)
-                    : new VariableWrapper(solver.MakeNumVar(0.0, double.MaxValue, varName), account.Name,
-                        assetName));
+            foreach (var assetName in account.PermissibleAssets)
+            {
+                var asset = await _assetRepository.Get(assetName);
+                Guard.Against.Null(asset, nameof(asset));
+
+                var varName = GenerateVariableName(assetName, account.Name);
+                variables.Add(varName,
+                    !account.AllowFractional || (asset.AssetType != AssetType.Cash)
+                        ? solver.MakeIntVar(0.0, int.MaxValue, varName)
+                        : solver.MakeNumVar(0.0, double.MaxValue, varName));
+            }
         }
 
-        // a * VTI + b * VXUS + c * VNQ + d * BND + cash1 * CASH == account1,
-        foreach (var account in enumeratedAccounts)
+        return variables;
+    }
+
+    // a * VTI + b * VXUS + c * VNQ + d * BND + cash1 * CASH == account1
+    private async Task<List<LinearConstraint>> GeneratePermissibleAssetsConstraints(
+        IEnumerable<Account> accounts, IReadOnlyDictionary<string, Variable> variables)
+    {
+        var constraints = new List<LinearConstraint>();
+        
+        foreach (var account in accounts)
         {
             LinearExpr? expr = null;
             foreach (var assetName in account.PermissibleAssets)
             {
-                var asset = _assetRepository.Get(assetName);
-                var localExpr = (double) _assetRepository.GetValue(asset.Ticker) *
-                                variables[GenerateVariableName(asset.Ticker, account.Name)].Variable;
-                if (expr is null) expr = localExpr;
-                else expr += localExpr;
+                var asset = await _assetRepository.Get(assetName);
+                Guard.Against.Null(asset, nameof(asset));
+
+                var localExpr = (double) asset.Value * variables[GenerateVariableName(asset.Ticker, account.Name)];
+                AddExpr(ref expr, localExpr);
             }
 
             if (expr is not null) constraints.Add((double) _assetService.TotalValue(account.Holdings) == expr);
         }
 
-        // a * VTI + e * VTI >= VTIAmount * (1 - tolerance)
-        // a * VTI + e * VTI <= VTIAmount * (1 + tolerance)
+        return constraints;
+    }
+
+    // a * VTI + e * VTI >= VTIAmount * (1 - tolerance)
+    // a * VTI + e * VTI <= VTIAmount * (1 + tolerance)
+    private async Task<List<LinearConstraint>> GenerateTargetAmountConstraints(
+        IReadOnlyDictionary<string, decimal> targetValuePerAsset, ICollection<Account> accounts,
+        double tolerance, IReadOnlyDictionary<string, Variable> variables)
+    {
+        var constraints = new List<LinearConstraint>();
+        
         foreach (var assetName in targetValuePerAsset.Keys)
         {
-            var asset = _assetRepository.Get(assetName);
+            var asset = await _assetRepository.Get(assetName);
+            Guard.Against.Null(asset, nameof(asset));
+
             LinearExpr? expr = null;
-            foreach (var account in enumeratedAccounts)
+            foreach (var account in accounts)
             {
                 if (!account.PermissibleAssets.Contains(assetName))
                 {
@@ -137,17 +159,17 @@ public class RebalanceService : IRebalanceService
 
                 if (asset.EquivalentTicker is not null && account.PermissibleAssets.Contains(asset.EquivalentTicker))
                 {
-                    var equivAsset = _assetRepository.Get(asset.EquivalentTicker);
+                    var equivAsset = await _assetRepository.Get(asset.EquivalentTicker);
+                    Guard.Against.Null(equivAsset, nameof(equivAsset));
+
                     var localExpr = (double) equivAsset.Value / assetValue *
-                                    variables[GenerateVariableName(equivAsset.Ticker, account.Name)].Variable;
-                    if (expr is null) expr = localExpr;
-                    else expr += localExpr;
+                                    variables[GenerateVariableName(equivAsset.Ticker, account.Name)];
+                    AddExpr(ref expr, localExpr);
                 }
                 else
                 {
-                    var localExpr = assetValue * variables[GenerateVariableName(assetName, account.Name)].Variable;
-                    if (expr is null) expr = localExpr;
-                    else expr += localExpr;
+                    var localExpr = assetValue * variables[GenerateVariableName(assetName, account.Name)];
+                    AddExpr(ref expr, localExpr);
                 }
             }
 
@@ -156,32 +178,38 @@ public class RebalanceService : IRebalanceService
             constraints.Add(expr <= (double) targetValuePerAsset[assetName] * (1 + tolerance));
         }
 
-        // b + g + h - cash1 - cash2;
+        return constraints;
+    }
+    
+    // b + g + h - cash1 - cash2;
+    private static LinearExpr? GenerateOptimization(
+        IEnumerable<Account> accounts, IReadOnlyDictionary<string, Variable> variables)
+    {
         LinearExpr? optimization = null;
-        foreach (var account in enumeratedAccounts)
+        
+        foreach (var account in accounts)
         {
             foreach (var assetName in account.PriorityAssets)
             {
-                var localExpr = variables[GenerateVariableName(assetName, account.Name)].Variable;
+                var localExpr = variables[GenerateVariableName(assetName, account.Name)];
                 if (optimization is null) optimization = localExpr;
                 else optimization += localExpr;
             }
 
             foreach (var assetName in account.UndesiredAssets)
             {
-                var localExpr = variables[GenerateVariableName(assetName, account.Name)].Variable;
+                var localExpr = variables[GenerateVariableName(assetName, account.Name)];
                 if (optimization is null) optimization = localExpr;
                 else optimization -= localExpr;
             }
         }
 
-        return (solver, constraints, optimization);
+        return optimization;
     }
 
     private static (Solver.ResultStatus, Dictionary<string, decimal>) SolveSystem(
-        Solver solver, IEnumerable<LinearConstraint>? constraints, LinearExpr? optimization)
+        Solver solver, List<LinearConstraint> constraints, LinearExpr? optimization)
     {
-        Guard.Against.Null(constraints, nameof(constraints));
         Guard.Against.Null(optimization, nameof(optimization));
 
         foreach (var constraint in constraints) solver.Add(constraint);
@@ -193,6 +221,12 @@ public class RebalanceService : IRebalanceService
         var resultValues = solver.variables().ToDictionary(x => x.Name(), x => (decimal) x.SolutionValue());
 
         return (resultStatus, resultValues);
+    }
+    
+    private static void AddExpr(ref LinearExpr? expr, LinearExpr localExpr)
+    {
+        if (expr is null) expr = localExpr;
+        else expr += localExpr;
     }
 
     private static string GenerateVariableName(string assetName, string accountName)

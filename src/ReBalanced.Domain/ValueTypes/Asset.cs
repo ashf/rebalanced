@@ -3,10 +3,9 @@
 public enum AssetType
 {
     Stock,
-    Crpyto,
+    Crypto,
     Cash,
     Property
 }
 
-public record Asset(string Ticker, decimal Value, AssetType AssetType, bool Fractional = true,
-    string EquivalentTicker = null);
+public record Asset(string Ticker, decimal Value, AssetType AssetType, DateTimeOffset Updated, string EquivalentTicker = null!);

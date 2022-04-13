@@ -1,6 +1,8 @@
 ﻿using Ardalis.GuardClauses;
+using ReBalanced.Domain.Entities;
+using ReBalanced.Domain.Entities.Aggregates;
 
-namespace ReBalanced.Domain.Entities.Aggregates;
+namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 public enum AccountType
 {
@@ -20,11 +22,12 @@ public class Account : BaseEntity, IAggregateRoot
 {
     private readonly Dictionary<string, Holding> _holdings = new();
 
-    public Account(string name, AccountType accountType, HoldingType holdingType, HashSet<string> permissibleAssets)
+    public Account(string name, AccountType accountType, HoldingType holdingType, bool allowFractional, HashSet<string> permissibleAssets)
     {
         Name = name;
         AccountType = accountType;
         HoldingType = holdingType;
+        AllowFractional = allowFractional;
         PermissibleAssets = permissibleAssets;
 
         AddHolding(new Holding("CASH"));
@@ -33,7 +36,7 @@ public class Account : BaseEntity, IAggregateRoot
         {
             AccountType.Taxable => new HashSet<string> {"VEA", "VWO"},
             AccountType.Roth => new HashSet<string> {"VNQ", "BND", "GBTC", "ETHE"},
-            AccountType.CryptoWallet => new HashSet<string> {"BTC", "ETH"},
+            AccountType.CryptoWallet => new HashSet<string> {"bitcoin", "ethereum"},
             AccountType.Property => new HashSet<string> {"Property"},
             _ => throw new NotImplementedException()
         };
@@ -48,11 +51,13 @@ public class Account : BaseEntity, IAggregateRoot
         };
     }
 
+    public bool AllowFractional { get; }
+
     public string Name { get; }
     public AccountType AccountType { get; }
     public HoldingType HoldingType { get; }
 
-    public IReadOnlyCollection<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
+    public IEnumerable<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
 
     public HashSet<string> PriorityAssets { get; set; }
     public HashSet<string> UndesiredAssets { get; set; }
@@ -70,10 +75,7 @@ public class Account : BaseEntity, IAggregateRoot
 
     public decimal AssetDifference(string assetName, decimal amount)
     {
-        if (Holdings.Any(holding => holding.AssetTicker == assetName))
-        {
-            return amount - Holdings.First(x => x.AssetTicker == assetName).Quantity;
-        }
+        if (_holdings.ContainsKey(assetName)) return amount - _holdings[assetName].Quantity;
 
         return amount;
     }

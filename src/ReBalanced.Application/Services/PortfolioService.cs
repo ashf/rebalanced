@@ -1,7 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using ReBalanced.Application.Services.Interfaces;
-using ReBalanced.Domain.Entities;
-using ReBalanced.Domain.Entities.Aggregates;
+using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
 
 namespace ReBalanced.Application.Services;
@@ -56,7 +55,7 @@ public class PortfolioService : IPortfolioService
 
         Guard.Against.Null(portfolio, nameof(portfolio));
 
-        var reblanceResult = await _rebalanceService.Rebalance(portfolio);
+        var reblanceResult = _rebalanceService.Rebalance(portfolio);
 
         // TODO: do something with result
     }

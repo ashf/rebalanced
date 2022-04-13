@@ -1,5 +1,6 @@
-﻿using ReBalanced.Application.Services.Interfaces;
-using ReBalanced.Domain.Entities;
+﻿using Ardalis.GuardClauses;
+using ReBalanced.Application.Services.Interfaces;
+using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
 
 namespace ReBalanced.Application.Services;
@@ -13,8 +14,20 @@ public class AssetService : IAssetService
         _assetRepository = assetRepository;
     }
 
+    public async Task<decimal> Value(Holding holding)
+    {
+        var assetValue = await _assetRepository.GetValue(holding.AssetTicker);
+        Guard.Against.Null(assetValue, nameof(assetValue));
+        return assetValue.Value * holding.Quantity;
+    }
+
     public decimal TotalValue(IEnumerable<Holding> holdings)
     {
-        return holdings.Sum(x => _assetRepository.GetValue(x.AssetTicker) * x.Quantity);
+        return holdings.Sum(x =>
+        {
+            var assetValue = _assetRepository.GetValue(x.AssetTicker).Result;
+            Guard.Against.Null(assetValue, nameof(assetValue));
+            return assetValue.Value * x.Quantity;
+        });
     }
 }

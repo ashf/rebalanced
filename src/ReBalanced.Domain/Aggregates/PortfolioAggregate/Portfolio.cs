@@ -1,10 +1,10 @@
 ﻿using Ardalis.GuardClauses;
+using ReBalanced.Domain.Entities;
 using ReBalanced.Domain.Entities.Aggregates;
-using ReBalanced.Domain.ValueTypes;
 
-namespace ReBalanced.Domain.Entities;
+namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
-public class Portfolio : BaseEntity
+public class Portfolio : BaseEntity, IAggregateRoot
 {
     public Portfolio(string name)
     {
@@ -17,21 +17,7 @@ public class Portfolio : BaseEntity
     public Dictionary<Guid, Account> Accounts { get; } = new();
     public Dictionary<string, Allocation> Allocations { get; private set; } = new();
 
-    public IReadOnlyCollection<Holding> Holdings
-    {
-        get
-        {
-            var holdings = new List<Holding>();
-
-            var accountsHoldings = Accounts.Values.Select(x => x.Holdings);
-
-            foreach (var accountHoldings in accountsHoldings) holdings.AddRange(accountHoldings);
-
-            return holdings.AsReadOnly();
-        }
-    }
-
-    public void UpdateAllocations(ICollection<Allocation> newAllocationRules)
+    public void SetAllocation(ICollection<Allocation> newAllocationRules)
     {
         Guard.Against.InvalidInput(
             newAllocationRules,
@@ -50,11 +36,19 @@ public class Portfolio : BaseEntity
         Accounts.Add(account.Id, account);
     }
 
-    public void RemoveAccount(Guid accountId)
+    public void DeleteAccount(Guid accountId)
     {
-        Guard.Against.InvalidInput(accountId, nameof(accountId), x => Accounts.ContainsKey(x),
-            "Portfolio already contains this account");
+        Guard.Against.InvalidInput(accountId, nameof(accountId), x => !Accounts.ContainsKey(x),
+            "Portfolio doesn't contain this account");
 
         Accounts.Remove(accountId);
+    }
+
+    public void AddHolding(Guid accountId, Holding holding)
+    {
+        Guard.Against.InvalidInput(accountId, nameof(accountId), x => !Accounts.ContainsKey(x),
+            "Portfolio doesn't contain this account");
+
+        Accounts[accountId].AddHolding(holding);
     }
 }

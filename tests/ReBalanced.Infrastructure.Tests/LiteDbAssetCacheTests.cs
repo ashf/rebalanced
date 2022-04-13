@@ -6,6 +6,7 @@ using ReBalanced.Domain.ValueTypes;
 using ReBalanced.Infrastructure.Caching;
 using ReBalanced.Infrastructure.LiteDB;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace ReBalanced.Infrastructure.Tests;
 
@@ -28,6 +29,6 @@ public class LiteDbAssetCacheTests
         var returnedAsset = await cache.Get(asset.Ticker);
 
         // Assert
-        Assert.StrictEqual(asset, returnedAsset);
+        Assert.Equal(asset, returnedAsset);
     }
 }

@@ -7,7 +7,6 @@ namespace ReBalanced.Infrastructure.Caching;
 public class LiteDbAssetCache : IAssetCache
 {
     private readonly ILiteCollection<Asset> _assets;
-    private DateTime? _lastCacheRefresh;
 
     public LiteDbAssetCache(LiteDbContext db)
     {

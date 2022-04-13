@@ -30,6 +30,22 @@ public class LiteDbContext
     {
         var mapper = BsonMapper.Global;
 
+        // https://stackoverflow.com/a/66497628
+        // DateTimeOffset truncates milliseconds by default
+        mapper.RegisterType
+        (
+            obj =>
+            {
+                var doc = new BsonDocument
+                {
+                    ["DateTime"] = obj.DateTime.Ticks,
+                    ["Offset"] = obj.Offset.Ticks
+                };
+                return doc;
+            },
+            doc => new DateTimeOffset(doc["DateTime"].AsInt64, new TimeSpan(doc["Offset"].AsInt64))
+        );
+        
         mapper.Entity<Asset>()
             .Id(x => x.Ticker);
 

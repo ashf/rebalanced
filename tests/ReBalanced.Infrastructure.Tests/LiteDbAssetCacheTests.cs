@@ -24,7 +24,7 @@ public class LiteDbAssetCacheTests
         var cache = new LiteDbAssetCache(db);
 
         // Act
-        var asset = new Asset("BND", 77.25M, AssetType.Stock, DateTime.UtcNow, false);
+        var asset = new Asset("BND", 77.25M, AssetType.Stock, DateTime.UtcNow);
         await cache.Upsert(asset.Ticker, asset);
         var returnedAsset = await cache.Get(asset.Ticker);
 

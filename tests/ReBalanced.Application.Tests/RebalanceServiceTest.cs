@@ -5,8 +5,6 @@ using NSubstitute;
 using ReBalanced.Application.Services;
 using ReBalanced.Application.Tests.Utility;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities;
-using ReBalanced.Domain.Entities.Aggregates;
 using ReBalanced.Domain.Providers;
 using ReBalanced.Domain.ValueTypes;
 using Xunit;
@@ -45,13 +43,13 @@ public class RebalanceServiceTest
 
         var portfolio = new Portfolio("Asher's Portfolio");
 
-        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, allAssetTickersNoCryptoProperty);
+        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false, allAssetTickersNoCryptoProperty);
         invAccount.AddHolding(new Holding("VTI", 100M));
         invAccount.AddHolding(new Holding("VXUS", 50M));
         invAccount.AddHolding(new Holding("CASH", 200M));
         portfolio.AddAccount(invAccount);
 
-        var rothAccount = new Account("Roth", AccountType.Roth, HoldingType.Quantity, allAssetTickersNoCryptoProperty);
+        var rothAccount = new Account("Roth", AccountType.Roth, HoldingType.Quantity, false, allAssetTickersNoCryptoProperty);
         rothAccount.AddHolding(new Holding("VTI", 10M));
         rothAccount.AddHolding(new Holding("VNQ", 15M));
         rothAccount.AddHolding(new Holding("BND", 20M));
@@ -76,6 +74,6 @@ public class RebalanceServiceTest
         var rebalanceResults = await rebalanceService.Rebalance(portfolio);
 
         // Assert
-        _testOutputHelper.PrintResults(rebalanceResults!, portfolio);
+        _testOutputHelper.PrintResults(rebalanceResults, portfolio);
     }
 }

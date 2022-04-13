@@ -34,14 +34,10 @@ public class LiteDbContext
         // DateTimeOffset truncates milliseconds by default
         mapper.RegisterType
         (
-            obj =>
+            obj => new BsonDocument
             {
-                var doc = new BsonDocument
-                {
-                    ["DateTime"] = obj.DateTime.Ticks,
-                    ["Offset"] = obj.Offset.Ticks
-                };
-                return doc;
+                ["DateTime"] = obj.DateTime.Ticks,
+                ["Offset"] = obj.Offset.Ticks
             },
             doc => new DateTimeOffset(doc["DateTime"].AsInt64, new TimeSpan(doc["Offset"].AsInt64))
         );

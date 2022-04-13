@@ -22,11 +22,12 @@ public class Account : BaseEntity, IAggregateRoot
 {
     private readonly Dictionary<string, Holding> _holdings = new();
 
-    public Account(string name, AccountType accountType, HoldingType holdingType, HashSet<string> permissibleAssets)
+    public Account(string name, AccountType accountType, HoldingType holdingType, bool allowFractional, HashSet<string> permissibleAssets)
     {
         Name = name;
         AccountType = accountType;
         HoldingType = holdingType;
+        AllowFractional = allowFractional;
         PermissibleAssets = permissibleAssets;
 
         AddHolding(new Holding("CASH"));
@@ -49,6 +50,8 @@ public class Account : BaseEntity, IAggregateRoot
             _ => throw new NotImplementedException()
         };
     }
+
+    public bool AllowFractional { get; }
 
     public string Name { get; }
     public AccountType AccountType { get; }

@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using ReBalanced.Infastructure.MBoum;
+using ReBalanced.Infrastructure.MBoum;
 using Refit;
 using Xunit;
 

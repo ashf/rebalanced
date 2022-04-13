@@ -1,6 +1,6 @@
 ﻿using Refit;
 
-namespace ReBalanced.Infastructure.MBoum;
+namespace ReBalanced.Infrastructure.MBoum;
 
 public interface IMBoumApi
 {

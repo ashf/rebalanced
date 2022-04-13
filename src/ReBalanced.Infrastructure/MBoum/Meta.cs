@@ -1,4 +1,4 @@
-﻿namespace ReBalanced.Infastructure.MBoum;
+﻿namespace ReBalanced.Infrastructure.MBoum;
 
 public class Meta
 {

@@ -8,5 +8,5 @@ public enum AssetType
     Property
 }
 
-public record Asset(string Ticker, decimal Value, AssetType AssetType, bool Fractional = true,
+public record Asset(string Ticker, decimal Value, AssetType AssetType, DateTimeOffset Updated, bool Fractional = true,
     string EquivalentTicker = null!);

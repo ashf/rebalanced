@@ -3,15 +3,16 @@ using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using ReBalanced.API.Middleware;
 using ReBalanced.Application.Services;
 using ReBalanced.Application.Services.Interfaces;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
-using ReBalanced.Infastructure;
-using ReBalanced.Infrastructure.Providers;
+using ReBalanced.Infrastructure.LiteDB;
+using ReBalanced.Infrastructure.MBoum;
+using ReBalanced.Infrastructure.Repositories;
+using Refit;
 using Serilog;
 using Serilog.Events;
 
@@ -50,15 +51,19 @@ builder.Services.AddControllers()
 // Application Layer services
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 
-// Infastructure Layer repositories
-builder.Services.AddScoped<IEntityRepository<Portfolio>, PortfolioRepository>();
+// Infrastructure Layer repositories
+builder.Services.AddScoped<IEntityRepository<Portfolio>, LiteDbPortfolioRepository>();
 
-// Infastructure Layer DB context
+// Infrastructure Layer DB context
 var folder = Environment.SpecialFolder.LocalApplicationData;
 var path = Environment.GetFolderPath(folder);
-var DbPath = Path.Join(path, "rebalanced.db");
+var dbPath = Path.Join(path, "rebalanced.db");
 
-builder.Services.AddDbContext<Context>(options => { options.UseSqlite($"Data Source={DbPath}"); });
+builder.Services.AddLiteDb(dbPath);
+
+// Infrastructure Layer REST Wrapper
+builder.Services.AddRefitClient<IMBoumApi>()
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https://mboum.com/api/v1"));
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();

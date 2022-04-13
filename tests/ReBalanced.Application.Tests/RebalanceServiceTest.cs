@@ -38,7 +38,7 @@ public class RebalanceServiceTest
         var assetService = new AssetService(assetRepository);
         var rebalanceService = new RebalanceService(assetService, assetRepository, logger);
 
-        var allAssetTickersNoCryptoProperty = assetRepository.GetAllTickers();
+        var allAssetTickersNoCryptoProperty = await assetRepository.GetAllTickers();
         allAssetTickersNoCryptoProperty.Remove("bitcoin");
         allAssetTickersNoCryptoProperty.Remove("ethereum");
         allAssetTickersNoCryptoProperty.Remove("Property");

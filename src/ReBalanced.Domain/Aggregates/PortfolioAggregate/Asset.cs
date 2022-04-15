@@ -7,4 +7,6 @@ public enum AssetType
     Cash,
     Property
 }
-public record Asset(string Ticker, decimal Value, AssetType AssetType, DateTimeOffset Updated = default, string EquivalentTicker = null!);
+
+public record Asset(string Ticker, decimal Value, AssetType AssetType, DateTimeOffset Updated = default,
+    string EquivalentTicker = null!);

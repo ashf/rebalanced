@@ -10,8 +10,8 @@ public class MBoumApiOptions
 
 public class MBoumApi : IMBoumApi
 {
-    private readonly IRefitMBoumApi _refitMBoumApi;
     private readonly MBoumApiOptions _options;
+    private readonly IRefitMBoumApi _refitMBoumApi;
 
     public MBoumApi(IRefitMBoumApi refitMBoumApi, IOptions<MBoumApiOptions> options)
     {

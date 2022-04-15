@@ -62,6 +62,7 @@ public class StockData
     // public double RegularMarketOpen { get; set; }
     // public double RegularMarketPreviousClose { get; set; }
     public double RegularMarketPrice { get; set; }
+
     // public DividendDate? RegularMarketTime { get; set; }
     // public long RegularMarketVolume { get; set; }
     // public long SharesOutstanding { get; set; }

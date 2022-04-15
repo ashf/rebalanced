@@ -17,10 +17,10 @@ public class MBoumTests
         var config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.development.json")
             .Build();
-        
+
         var mBoumApi = RestService.For<IRefitMBoumApi>("https://mboum.com/api/v1");
         var apikey = config["MBOUM:APIKEY"];
-        
+
         // Act
         var result = await mBoumApi.GetStockQuotes(apikey!, symbol);
 
@@ -30,7 +30,7 @@ public class MBoumTests
         Assert.NotEmpty(result.Data!);
         Assert.True(result.Data?[0].Symbol == symbol);
     }
-    
+
     [Theory]
     [InlineData("VTI,VNQ")]
     [InlineData("VTI,VNQ,BND")]
@@ -38,14 +38,14 @@ public class MBoumTests
     {
         // Arange
         var symbolsList = symbols.Split(',');
-        
+
         var config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.development.json")
             .Build();
-        
+
         var mBoumApi = RestService.For<IRefitMBoumApi>("https://mboum.com/api/v1");
         var apikey = config["MBOUM:APIKEY"];
-        
+
         // Act
         var result = await mBoumApi.GetStockQuotes(apikey!, symbols);
 
@@ -54,12 +54,9 @@ public class MBoumTests
         Assert.NotNull(result.Data);
         Assert.NotEmpty(result.Data!);
         Assert.True(result.Data?.Count == symbolsList.Length);
-        for (var i = 0; i < symbolsList.Length; i++)
-        {
-            Assert.True(result.Data?[i].Symbol == symbolsList[i]);
-        }
+        for (var i = 0; i < symbolsList.Length; i++) Assert.True(result.Data?[i].Symbol == symbolsList[i]);
     }
-    
+
     [Theory]
     [InlineData("bitcoin")]
     public async Task CanGetCoinQuote(string? key)
@@ -68,10 +65,10 @@ public class MBoumTests
         var config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.development.json")
             .Build();
-        
+
         var mBoumApi = RestService.For<IRefitMBoumApi>("https://mboum.com/api/v1");
         var apikey = config["MBOUM:APIKEY"];
-        
+
         // Act
         var result = await mBoumApi.GetCoinQuote(apikey!, key);
 

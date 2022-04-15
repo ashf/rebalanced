@@ -25,12 +25,14 @@ public class AssetService : IAssetService
     public async Task<decimal> TotalValue(Account account, bool includeFractional = true)
     {
         var sum = 0M;
-        
+
         foreach (var holding in account.Holdings)
         {
             var asset = await _assetRepository.Get(holding.Asset.Ticker);
             Guard.Against.Null(asset, nameof(asset));
-            var quantity = (includeFractional || (asset.AssetType == AssetType.Cash)) ? holding.Quantity : Math.Floor(holding.Quantity);
+            var quantity = includeFractional || asset.AssetType == AssetType.Cash
+                ? holding.Quantity
+                : Math.Floor(holding.Quantity);
             sum += asset.Value * quantity;
         }
 

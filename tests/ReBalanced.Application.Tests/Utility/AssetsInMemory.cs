@@ -23,7 +23,7 @@ public static class AssetsInMemory
         new("VWO", 45.5M, AssetType.Stock, DateTime.UtcNow),
         new("VXUS", 58.58M, AssetType.Stock, DateTime.UtcNow)
     }.ToDictionary(x => x.Ticker, x => x);
-    
+
     public static Dictionary<string, Asset> AssetsSimple { get; } = new List<Asset>
     {
         new("BND", 50M, AssetType.Stock, DateTime.UtcNow),

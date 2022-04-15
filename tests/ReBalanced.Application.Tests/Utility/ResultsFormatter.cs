@@ -1,14 +1,14 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
-using ReBalanced.Domain.Entities;
 using Xunit.Abstractions;
 
 namespace ReBalanced.Application.Tests.Utility;
 
 public static class ResultsFormatter
 {
-    public static void PrintResults(this ITestOutputHelper testOutputHelper, Dictionary<string, decimal> rebalanceResults, Portfolio portfolio)
+    public static void PrintResults(this ITestOutputHelper testOutputHelper,
+        Dictionary<string, decimal> rebalanceResults, Portfolio portfolio)
     {
         foreach (var (asset, amount) in rebalanceResults!)
         {

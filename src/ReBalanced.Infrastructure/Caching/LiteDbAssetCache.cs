@@ -40,7 +40,8 @@ public class LiteDbAssetCache : IAssetCache
 
     public async Task<DateTimeOffset?> OldestCacheItem()
     {
-        return (await _assets.FindAsync(asset => asset.AssetType == AssetType.Stock || asset.AssetType == AssetType.Crypto))
+        return (await _assets.FindAsync(asset =>
+                asset.AssetType == AssetType.Stock || asset.AssetType == AssetType.Crypto))
             .Min(x => x.Updated);
     }
 }

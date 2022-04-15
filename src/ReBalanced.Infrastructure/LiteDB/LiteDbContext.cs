@@ -41,7 +41,7 @@ public class LiteDbContext
                 ["Offset"] = obj.Offset.Ticks
             },
             doc => new DateTimeOffset(doc["DateTime"].AsInt64, new TimeSpan(doc["Offset"].AsInt64)));
-        
+
         mapper.Entity<Asset>()
             .Id(x => x.Ticker);
 

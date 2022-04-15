@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Refit;
 
 namespace ReBalanced.Infrastructure.MBoum;
 

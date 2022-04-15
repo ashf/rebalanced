@@ -32,14 +32,14 @@ public class RebalanceService : IRebalanceService
 
         var targetValuePerAsset =
             portfolio.Allocations.ToDictionary(
-                x => x.Key, 
+                x => x.Key,
                 x => x.Value.Percentage * portfolioTotal);
 
         var tolerance = 0.00;
 
         var resultStatus = Solver.ResultStatus.NOT_SOLVED;
         var resultValues = new Dictionary<string, decimal>();
-        
+
         double objectiveValue = 0;
         var iterations = 0;
 
@@ -105,7 +105,8 @@ public class RebalanceService : IRebalanceService
 
         var constraints = new List<LinearConstraint>();
         constraints.AddRange(await GeneratePermissibleAssetsConstraints(accounts, variables));
-        constraints.AddRange(await GenerateTargetAmountConstraints(targetValuePerAsset, accounts, tolerance, variables));
+        constraints.AddRange(
+            await GenerateTargetAmountConstraints(targetValuePerAsset, accounts, tolerance, variables));
 
         var optimization = GenerateOptimization(accounts, variables);
 
@@ -115,20 +116,18 @@ public class RebalanceService : IRebalanceService
     private async Task<Dictionary<string, Variable>> PopulateVariables(IEnumerable<Account> accounts, Solver solver)
     {
         var variables = new Dictionary<string, Variable>();
-        
-        foreach (var account in accounts)
-        {
-            foreach (var assetName in account.PermissibleAssets)
-            {
-                var asset = await _assetRepository.Get(assetName);
-                Guard.Against.Null(asset, assetName);
 
-                var varName = GenerateVariableName(assetName, account.Name);
-                variables.Add(varName,
-                    account.AllowFractional || (asset.AssetType == AssetType.Cash)
-                        ? solver.MakeNumVar(0.0, double.MaxValue, varName)
-                        : solver.MakeIntVar(0.0, int.MaxValue, varName));
-            }
+        foreach (var account in accounts)
+        foreach (var assetName in account.PermissibleAssets)
+        {
+            var asset = await _assetRepository.Get(assetName);
+            Guard.Against.Null(asset, assetName);
+
+            var varName = GenerateVariableName(assetName, account.Name);
+            variables.Add(varName,
+                account.AllowFractional || asset.AssetType == AssetType.Cash
+                    ? solver.MakeNumVar(0.0, double.MaxValue, varName)
+                    : solver.MakeIntVar(0.0, int.MaxValue, varName));
         }
 
         return variables;
@@ -139,7 +138,7 @@ public class RebalanceService : IRebalanceService
         IEnumerable<Account> accounts, IReadOnlyDictionary<string, Variable> variables)
     {
         var constraints = new List<LinearConstraint>();
-        
+
         foreach (var account in accounts)
         {
             LinearExpr? expr = null;
@@ -152,7 +151,8 @@ public class RebalanceService : IRebalanceService
                 AddExpr(ref expr, localExpr);
             }
 
-            if (expr is not null) constraints.Add((double) await _assetService.TotalValue(account, account.AllowFractional) == expr);
+            if (expr is not null)
+                constraints.Add((double) await _assetService.TotalValue(account, account.AllowFractional) == expr);
         }
 
         return constraints;
@@ -165,7 +165,7 @@ public class RebalanceService : IRebalanceService
         double tolerance, IReadOnlyDictionary<string, Variable> variables)
     {
         var constraints = new List<LinearConstraint>();
-        
+
         foreach (var assetName in targetValuePerAsset.Keys)
         {
             var asset = await _assetRepository.Get(assetName);
@@ -187,14 +187,14 @@ public class RebalanceService : IRebalanceService
         Asset asset)
     {
         LinearExpr? expr = null;
-        
+
         foreach (var account in accounts)
         {
             // dont create constraint for cash if undesired
             if (asset.AssetType == AssetType.Cash && account.UndesiredAssets.Contains("CASH")) continue;
-            
+
             var assetValue = (double) asset.Value;
-            
+
             if (account.PermissibleAssets.Contains(asset.Ticker))
             {
                 var localExpr = assetValue * variables[GenerateVariableName(asset.Ticker, account.Name)];
@@ -206,11 +206,11 @@ public class RebalanceService : IRebalanceService
                 if (asset.EquivalentTicker is not null &&
                     !account.PermissibleAssets.Contains(asset.EquivalentTicker)) continue;
                 if (asset.EquivalentTicker is null) continue;
-                
+
                 var equivAsset = await _assetRepository.Get(asset.EquivalentTicker);
                 Guard.Against.Null(equivAsset, nameof(equivAsset));
 
-                var localEquivExpr = (double)equivAsset.Value *
+                var localEquivExpr = (double) equivAsset.Value *
                                      variables[GenerateVariableName(equivAsset.Ticker, account.Name)];
                 AddExpr(ref expr, localEquivExpr);
             }
@@ -224,13 +224,13 @@ public class RebalanceService : IRebalanceService
         IEnumerable<Account> accounts, IReadOnlyDictionary<string, Variable> variables)
     {
         LinearExpr? optimization = null;
-        
+
         foreach (var account in accounts)
         {
             foreach (var assetName in account.PriorityAssets)
             {
                 if (!account.PermissibleAssets.Contains(assetName)) continue;
-             
+
                 var localExpr = variables[GenerateVariableName(assetName, account.Name)];
                 if (optimization is null) optimization = localExpr;
                 else optimization += localExpr;
@@ -239,7 +239,7 @@ public class RebalanceService : IRebalanceService
             foreach (var assetName in account.UndesiredAssets)
             {
                 if (!account.PermissibleAssets.Contains(assetName)) continue;
-                
+
                 var localExpr = variables[GenerateVariableName(assetName, account.Name)];
                 if (optimization is null) optimization = localExpr;
                 else optimization -= localExpr;
@@ -264,7 +264,7 @@ public class RebalanceService : IRebalanceService
 
         return (resultStatus, resultValues);
     }
-    
+
     private static void AddExpr(ref LinearExpr? expr, LinearExpr localExpr)
     {
         if (expr is null) expr = localExpr;

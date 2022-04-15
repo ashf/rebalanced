@@ -12,7 +12,6 @@ using ReBalanced.Domain.Providers;
 using ReBalanced.Infrastructure.LiteDB;
 using ReBalanced.Infrastructure.MBoum;
 using ReBalanced.Infrastructure.Repositories;
-using Refit;
 using Serilog;
 using Serilog.Events;
 

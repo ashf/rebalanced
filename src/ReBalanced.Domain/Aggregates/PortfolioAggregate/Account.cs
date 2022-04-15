@@ -23,7 +23,8 @@ public class Account : BaseEntity, IAggregateRoot
 {
     private readonly Dictionary<string, Holding> _holdings = new();
 
-    public Account(string name, AccountType accountType, HoldingType holdingType, bool allowFractional, HashSet<string> permissibleAssets)
+    public Account(string name, AccountType accountType, HoldingType holdingType, bool allowFractional,
+        HashSet<string> permissibleAssets)
     {
         Name = name;
         AccountType = accountType;

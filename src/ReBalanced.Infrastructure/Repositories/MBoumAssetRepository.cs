@@ -24,18 +24,15 @@ public class MBoumAssetRepository : IAssetRepository
     public async Task SeedCache(Asset asset)
     {
         if (await _assetCache.ContainsAsset(asset.Ticker)) return;
-        
+
         await _assetCache.Upsert(asset.Ticker, asset);
     }
 
     public async Task SeedCache(IEnumerable<Asset> assets)
     {
-        foreach (var asset in assets)
-        {
-            await SeedCache(asset);
-        }
+        foreach (var asset in assets) await SeedCache(asset);
     }
-    
+
     public async Task<Asset?> Get(string? assetTicker)
     {
         await UpdateValues();
@@ -57,7 +54,7 @@ public class MBoumAssetRepository : IAssetRepository
     {
         var assets = await _assetCache.Assets();
         var oldestUpdate = await _assetCache.OldestCacheItem();
-        if (!oldestUpdate.HasValue || (DateTime.UtcNow - oldestUpdate > _staleTime))
+        if (!oldestUpdate.HasValue || DateTime.UtcNow - oldestUpdate > _staleTime)
         {
             await UpdateStocks();
             await UpdateCrpyto();
@@ -109,7 +106,7 @@ public class MBoumAssetRepository : IAssetRepository
         {
             var asset = await _assetCache.Get(quote.Symbol);
             Guard.Against.Null(asset, nameof(asset));
-            
+
             await _assetCache.Upsert(quote.Symbol, asset with
             {
                 Value = (decimal) quote.RegularMarketPrice,

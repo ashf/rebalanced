@@ -12,7 +12,7 @@ public static class LiteDbUtility
         const Environment.SpecialFolder folder = Environment.SpecialFolder.LocalApplicationData;
         var path = Environment.GetFolderPath(folder);
         var dbPath = Path.Join(path, "rebalanced_test.db");
-        var liteDbOptions = Options.Create(new LiteDbConfig{DatabasePath = dbPath});
+        var liteDbOptions = Options.Create(new LiteDbConfig {DatabasePath = dbPath});
         return new LiteDbContext(liteDbOptions);
     }
 }

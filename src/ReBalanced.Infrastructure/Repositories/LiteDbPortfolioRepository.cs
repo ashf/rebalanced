@@ -1,5 +1,4 @@
-﻿using LiteDB;
-using LiteDB.Async;
+﻿using LiteDB.Async;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
 using ReBalanced.Infrastructure.LiteDB;

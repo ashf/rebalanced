@@ -62,8 +62,10 @@ var dbPath = Path.Join(path, "rebalanced.db");
 builder.Services.AddLiteDb(dbPath);
 
 // Infrastructure Layer REST Wrapper
-builder.Services.AddRefitClient<IMBoumApi>()
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https://mboum.com/api/v1"));
+builder.Services.Configure<MBoumApiOptions>(
+    builder.Configuration.GetSection(MBoumApiOptions.MBoum));
+
+builder.Services.AddMBoumApi("https://mboum.com/api/v1");
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();

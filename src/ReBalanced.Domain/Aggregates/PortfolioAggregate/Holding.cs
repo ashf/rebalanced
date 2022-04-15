@@ -1,17 +1,18 @@
 ﻿using Ardalis.GuardClauses;
 using ReBalanced.Domain.Entities;
+using ReBalanced.Domain.ValueTypes;
 
 namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 public class Holding : BaseEntity
 {
-    public Holding(string assetTicker, decimal quantity = 0)
+    public Holding(Asset asset, decimal quantity = 0)
     {
-        AssetTicker = assetTicker;
+        Asset = asset;
         Quantity = quantity;
     }
 
-    public string AssetTicker { get; }
+    public Asset Asset { get; }
     public decimal Quantity { get; private set; }
 
     public void AddQuantity(decimal quantity)

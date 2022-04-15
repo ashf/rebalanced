@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Google.OrTools.LinearSolver;
 using Microsoft.Extensions.Logging;
+using ReBalanced.Application.Services.Extensions;
 using ReBalanced.Application.Services.Interfaces;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
@@ -27,8 +28,7 @@ public class RebalanceService : IRebalanceService
 
     public async Task<Dictionary<string, decimal>> Rebalance(Portfolio portfolio)
     {
-        var portfolioTotal = 
-            portfolio.Accounts.Values.Sum(account => _assetService.TotalValue(account, account.AllowFractional));
+        var portfolioTotal = await portfolio.TotalValue(_assetService, true);
 
         var targetValuePerAsset =
             portfolio.Allocations.ToDictionary(
@@ -84,7 +84,7 @@ public class RebalanceService : IRebalanceService
 
             if (account.AllowFractional) continue;
 
-            var holding = account.Holdings.FirstOrDefault(x => x.AssetTicker == assetName);
+            var holding = account.Holdings.FirstOrDefault(x => x.Asset.Ticker == assetName);
             if (holding is null) continue;
 
             var fraction = holding.Quantity - Math.Truncate(holding.Quantity);
@@ -95,7 +95,7 @@ public class RebalanceService : IRebalanceService
 
     private async Task<(Solver solver, List<LinearConstraint> constraints, LinearExpr? optimization)>
         SetupSystem(
-            IReadOnlyDictionary<string, decimal> targetValuePerAsset,
+            Dictionary<string, decimal> targetValuePerAsset,
             ICollection<Account> accounts,
             double tolerance)
     {
@@ -121,7 +121,7 @@ public class RebalanceService : IRebalanceService
             foreach (var assetName in account.PermissibleAssets)
             {
                 var asset = await _assetRepository.Get(assetName);
-                Guard.Against.Null(asset, nameof(asset));
+                Guard.Against.Null(asset, assetName);
 
                 var varName = GenerateVariableName(assetName, account.Name);
                 variables.Add(varName,
@@ -152,7 +152,7 @@ public class RebalanceService : IRebalanceService
                 AddExpr(ref expr, localExpr);
             }
 
-            if (expr is not null) constraints.Add((double) _assetService.TotalValue(account, account.AllowFractional) == expr);
+            if (expr is not null) constraints.Add((double) await _assetService.TotalValue(account, account.AllowFractional) == expr);
         }
 
         return constraints;
@@ -161,7 +161,7 @@ public class RebalanceService : IRebalanceService
     // a * VTI + e * VTI >= VTIAmount * (1 - tolerance)
     // a * VTI + e * VTI <= VTIAmount * (1 + tolerance)
     private async Task<List<LinearConstraint>> GenerateTargetAmountConstraints(
-        IReadOnlyDictionary<string, decimal> targetValuePerAsset, ICollection<Account> accounts,
+        Dictionary<string, decimal> targetValuePerAsset, ICollection<Account> accounts,
         double tolerance, IReadOnlyDictionary<string, Variable> variables)
     {
         var constraints = new List<LinearConstraint>();
@@ -210,7 +210,7 @@ public class RebalanceService : IRebalanceService
                 var equivAsset = await _assetRepository.Get(asset.EquivalentTicker);
                 Guard.Against.Null(equivAsset, nameof(equivAsset));
 
-                var localEquivExpr = (double) equivAsset.Value / assetValue *
+                var localEquivExpr = (double)equivAsset.Value *
                                      variables[GenerateVariableName(equivAsset.Ticker, account.Name)];
                 AddExpr(ref expr, localEquivExpr);
             }
@@ -271,7 +271,7 @@ public class RebalanceService : IRebalanceService
         else expr += localExpr;
     }
 
-    private static string GenerateVariableName(string assetName, string accountName)
+    private static string GenerateVariableName(string? assetName, string accountName)
     {
         return $"{assetName}_{accountName}";
     }

@@ -1,4 +1,5 @@
 ﻿using LiteDB;
+using LiteDB.Async;
 using Microsoft.Extensions.Options;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.ValueTypes;
@@ -7,14 +8,14 @@ namespace ReBalanced.Infrastructure.LiteDB;
 
 public class LiteDbContext
 {
-    public readonly LiteDatabase Context;
+    public readonly LiteDatabaseAsync Context;
 
     public LiteDbContext(IOptions<LiteDbConfig> configs)
     {
-        LiteDatabase? db;
+        LiteDatabaseAsync? db;
         try
         {
-            db = new LiteDatabase(configs.Value.DatabasePath);
+            db = new LiteDatabaseAsync(configs.Value.DatabasePath);
         }
         catch (Exception ex)
         {
@@ -39,8 +40,7 @@ public class LiteDbContext
                 ["DateTime"] = obj.DateTime.Ticks,
                 ["Offset"] = obj.Offset.Ticks
             },
-            doc => new DateTimeOffset(doc["DateTime"].AsInt64, new TimeSpan(doc["Offset"].AsInt64))
-        );
+            doc => new DateTimeOffset(doc["DateTime"].AsInt64, new TimeSpan(doc["Offset"].AsInt64)));
         
         mapper.Entity<Asset>()
             .Id(x => x.Ticker);

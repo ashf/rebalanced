@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using ReBalanced.Domain.Entities;
 using ReBalanced.Domain.Entities.Aggregates;
+using ReBalanced.Domain.Seeds;
 
 namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
@@ -30,23 +31,23 @@ public class Account : BaseEntity, IAggregateRoot
         AllowFractional = allowFractional;
         PermissibleAssets = permissibleAssets;
 
-        AddHolding(new Holding("CASH"));
+        AddHolding(new Holding(AssetSeeds.CASH));
 
         PriorityAssets = accountType switch
         {
-            AccountType.Taxable => new HashSet<string> {"VEA", "VWO"},
-            AccountType.Roth => new HashSet<string> {"VNQ", "BND", "GBTC", "ETHE"},
-            AccountType.CryptoWallet => new HashSet<string> {"bitcoin", "ethereum"},
-            AccountType.Property => new HashSet<string> {"Property"},
+            AccountType.Taxable => new HashSet<string?> {"VEA", "VWO"},
+            AccountType.Roth => new HashSet<string?> {"VNQ", "BND", "GBTC", "ETHE"},
+            AccountType.CryptoWallet => new HashSet<string?> {"bitcoin", "ethereum"},
+            AccountType.Property => new HashSet<string?> {"PROPERTY"},
             _ => throw new NotImplementedException()
         };
 
         UndesiredAssets = accountType switch
         {
-            AccountType.Taxable => new HashSet<string> {"GBTC", "ETHE"},
-            AccountType.Roth => new HashSet<string> {"CASH"},
-            AccountType.CryptoWallet => new HashSet<string> {"CASH"},
-            AccountType.Property => new HashSet<string> {"CASH"},
+            AccountType.Taxable => new HashSet<string?> {"GBTC", "ETHE"},
+            AccountType.Roth => new HashSet<string?> {"CASH"},
+            AccountType.CryptoWallet => new HashSet<string?> {"CASH"},
+            AccountType.Property => new HashSet<string?> {"CASH"},
             _ => throw new NotImplementedException()
         };
     }
@@ -59,18 +60,18 @@ public class Account : BaseEntity, IAggregateRoot
 
     public IEnumerable<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
 
-    public HashSet<string> PriorityAssets { get; set; }
-    public HashSet<string> UndesiredAssets { get; set; }
-    public HashSet<string> PermissibleAssets { get; set; }
+    public HashSet<string?> PriorityAssets { get; set; }
+    public HashSet<string?> UndesiredAssets { get; set; }
+    public HashSet<string?> PermissibleAssets { get; set; }
 
     public void AddHolding(Holding holding)
     {
-        Guard.Against.InvalidInput(holding, nameof(Holding), x => PermissibleAssets.Contains(x.AssetTicker));
+        Guard.Against.InvalidInput(holding, nameof(Holding), x => PermissibleAssets.Contains(x.Asset.Ticker));
 
-        if (!_holdings.ContainsKey(holding.AssetTicker))
-            _holdings.Add(holding.AssetTicker, holding);
+        if (!_holdings.ContainsKey(holding.Asset.Ticker))
+            _holdings.Add(holding.Asset.Ticker, holding);
         else
-            _holdings[holding.AssetTicker].AddQuantity(holding.Quantity);
+            _holdings[holding.Asset.Ticker].AddQuantity(holding.Quantity);
     }
 
     public decimal AssetDifference(string assetName, decimal amount)

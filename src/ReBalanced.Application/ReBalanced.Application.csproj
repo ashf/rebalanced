@@ -7,14 +7,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Ardalis.GuardClauses" Version="4.0.0"/>
-        <PackageReference Include="Google.OrTools" Version="9.2.9972"/>
-        <PackageReference Include="UnitsNet" Version="4.121.0"/>
+        <PackageReference Include="Ardalis.GuardClauses" Version="4.0.0" />
+        <PackageReference Include="Google.OrTools" Version="9.2.9972" />
+        <PackageReference Include="UnitsNet" Version="4.121.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ReBalanced.Domain\ReBalanced.Domain.csproj"/>
-        <ProjectReference Include="..\ReBalanced.Infrastructure\ReBalanced.Infrastructure.csproj"/>
+        <ProjectReference Include="..\ReBalanced.Domain\ReBalanced.Domain.csproj" />
+        <ProjectReference Include="..\ReBalanced.Infrastructure\ReBalanced.Infrastructure.csproj" />
     </ItemGroup>
 
     <ItemGroup>

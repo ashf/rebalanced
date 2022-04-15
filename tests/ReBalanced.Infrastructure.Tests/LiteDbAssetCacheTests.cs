@@ -1,12 +1,9 @@
 ﻿using System;
-using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Options;
 using ReBalanced.Domain.ValueTypes;
 using ReBalanced.Infrastructure.Caching;
-using ReBalanced.Infrastructure.LiteDB;
+using ReBalanced.Infrastructure.Tests.Utility;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace ReBalanced.Infrastructure.Tests;
 
@@ -16,11 +13,7 @@ public class LiteDbAssetCacheTests
     public async Task CacheHit()
     {
         // Arrange
-        var folder = Environment.SpecialFolder.LocalApplicationData;
-        var path = Environment.GetFolderPath(folder);
-        var dbPath = Path.Join(path, "rebalanced_test.db");
-        var liteDbOptions = Options.Create(new LiteDbConfig{DatabasePath = dbPath});
-        var db = new LiteDbContext(liteDbOptions);
+        var db = LiteDbUtility.GetTestLiteDb();
         var cache = new LiteDbAssetCache(db);
 
         // Act

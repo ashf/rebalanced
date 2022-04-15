@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using ReBalanced.Domain.Entities;
 using ReBalanced.Domain.Entities.Aggregates;
+using ReBalanced.Domain.Seeds;
 
 namespace ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
@@ -22,7 +23,8 @@ public class Account : BaseEntity, IAggregateRoot
 {
     private readonly Dictionary<string, Holding> _holdings = new();
 
-    public Account(string name, AccountType accountType, HoldingType holdingType, bool allowFractional, HashSet<string> permissibleAssets)
+    public Account(string name, AccountType accountType, HoldingType holdingType, bool allowFractional,
+        HashSet<string> permissibleAssets)
     {
         Name = name;
         AccountType = accountType;
@@ -30,14 +32,14 @@ public class Account : BaseEntity, IAggregateRoot
         AllowFractional = allowFractional;
         PermissibleAssets = permissibleAssets;
 
-        AddHolding(new Holding("CASH"));
+        AddHolding(new Holding(AssetSeeds.CASH));
 
         PriorityAssets = accountType switch
         {
             AccountType.Taxable => new HashSet<string> {"VEA", "VWO"},
             AccountType.Roth => new HashSet<string> {"VNQ", "BND", "GBTC", "ETHE"},
             AccountType.CryptoWallet => new HashSet<string> {"bitcoin", "ethereum"},
-            AccountType.Property => new HashSet<string> {"Property"},
+            AccountType.Property => new HashSet<string> {"PROPERTY"},
             _ => throw new NotImplementedException()
         };
 
@@ -65,12 +67,12 @@ public class Account : BaseEntity, IAggregateRoot
 
     public void AddHolding(Holding holding)
     {
-        Guard.Against.InvalidInput(holding, nameof(Holding), x => PermissibleAssets.Contains(x.AssetTicker));
+        Guard.Against.InvalidInput(holding, nameof(Holding), x => PermissibleAssets.Contains(x.Asset.Ticker));
 
-        if (!_holdings.ContainsKey(holding.AssetTicker))
-            _holdings.Add(holding.AssetTicker, holding);
+        if (!_holdings.ContainsKey(holding.Asset.Ticker))
+            _holdings.Add(holding.Asset.Ticker, holding);
         else
-            _holdings[holding.AssetTicker].AddQuantity(holding.Quantity);
+            _holdings[holding.Asset.Ticker].AddQuantity(holding.Quantity);
     }
 
     public decimal AssetDifference(string assetName, decimal amount)

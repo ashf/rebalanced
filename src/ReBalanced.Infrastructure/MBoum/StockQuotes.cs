@@ -10,8 +10,7 @@ public class StockQuotes
 
 public class StockData
 {
-    public double Ask { get; set; }
-
+    // public double Ask { get; set; }
     // public long AskSize { get; set; }
     // public long AverageDailyVolume10Day { get; set; }
     // public long AverageDailyVolume3Month { get; set; }
@@ -62,7 +61,8 @@ public class StockData
     // public double RegularMarketDayLow { get; set; }
     // public double RegularMarketOpen { get; set; }
     // public double RegularMarketPreviousClose { get; set; }
-    // public double RegularMarketPrice { get; set; }
+    public double RegularMarketPrice { get; set; }
+
     // public DividendDate? RegularMarketTime { get; set; }
     // public long RegularMarketVolume { get; set; }
     // public long SharesOutstanding { get; set; }

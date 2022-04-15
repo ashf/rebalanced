@@ -11,23 +11,35 @@ public class MBoumAssetRepository : IAssetRepository
 {
     private readonly IAssetCache _assetCache;
     private readonly IConfiguration _configuration;
-    private readonly IMBoumApi _mBoumApi;
+    private readonly IRefitMBoumApi _refitMBoumApi;
     private readonly TimeSpan _staleTime = TimeSpan.FromHours(1);
 
-    public MBoumAssetRepository(IConfiguration configuration, IMBoumApi mBoumApi, IAssetCache assetCache)
+    public MBoumAssetRepository(IConfiguration configuration, IRefitMBoumApi refitMBoumApi, IAssetCache assetCache)
     {
         _configuration = configuration;
-        _mBoumApi = mBoumApi;
+        _refitMBoumApi = refitMBoumApi;
         _assetCache = assetCache;
     }
 
-    public async Task<Asset?> Get(string assetTicker)
+    public async Task SeedCache(Asset asset)
+    {
+        if (await _assetCache.ContainsAsset(asset.Ticker)) return;
+
+        await _assetCache.Upsert(asset.Ticker, asset);
+    }
+
+    public async Task SeedCache(IEnumerable<Asset> assets)
+    {
+        foreach (var asset in assets) await SeedCache(asset);
+    }
+
+    public async Task<Asset?> Get(string? assetTicker)
     {
         await UpdateValues();
         return await _assetCache.Get(assetTicker);
     }
 
-    public async Task<decimal?> GetValue(string assetTicker)
+    public async Task<decimal?> GetValue(string? assetTicker)
     {
         await UpdateValues();
         return (await _assetCache.Get(assetTicker))?.Value;
@@ -40,8 +52,9 @@ public class MBoumAssetRepository : IAssetRepository
 
     public async Task UpdateValues()
     {
+        var assets = await _assetCache.Assets();
         var oldestUpdate = await _assetCache.OldestCacheItem();
-        if (DateTime.UtcNow - oldestUpdate > _staleTime)
+        if (!oldestUpdate.HasValue || DateTime.UtcNow - oldestUpdate > _staleTime)
         {
             await UpdateStocks();
             await UpdateCrpyto();
@@ -66,7 +79,7 @@ public class MBoumAssetRepository : IAssetRepository
                 var quote = await GetStockQuotes(asset.Ticker);
                 Guard.Against.Null(quote, nameof(quote));
                 Guard.Against.NullOrEmpty(quote.Data, nameof(quote.Data));
-                value = (decimal) quote.Data[0].Ask;
+                value = (decimal) quote.Data[0].RegularMarketPrice;
                 break;
             }
         }
@@ -74,7 +87,7 @@ public class MBoumAssetRepository : IAssetRepository
         await _assetCache.Upsert(asset.Ticker, asset with
         {
             Value = value,
-            Updated = DateTimeOffset.UtcNow
+            Updated = DateTime.UtcNow
         });
     }
 
@@ -91,18 +104,20 @@ public class MBoumAssetRepository : IAssetRepository
 
         foreach (var quote in stockQuotes.Data)
         {
-            var asset = await _assetCache.Get(quote.Symbol!);
-            await _assetCache.Upsert(quote.Symbol!, asset! with
+            var asset = await _assetCache.Get(quote.Symbol);
+            Guard.Against.Null(asset, nameof(asset));
+
+            await _assetCache.Upsert(quote.Symbol, asset with
             {
-                Value = (decimal) quote.Ask,
-                Updated = DateTimeOffset.UtcNow
+                Value = (decimal) quote.RegularMarketPrice,
+                Updated = DateTime.UtcNow
             });
         }
     }
 
     private async Task UpdateCrpyto()
     {
-        var assets = await _assetCache.Assets();
+        var assets = (await _assetCache.Assets()).ToList();
         var crpytoAssets = from asset in assets where asset.AssetType == AssetType.Crypto select asset.Ticker;
 
         foreach (var crpytoAsset in crpytoAssets)
@@ -116,18 +131,19 @@ public class MBoumAssetRepository : IAssetRepository
             await _assetCache.Upsert(cryptoQuote.Meta.Key!, asset! with
             {
                 Value = (decimal) cryptoQuote.Data.Price,
-                Updated = DateTimeOffset.UtcNow
+                Updated = DateTime.UtcNow
             });
         }
     }
 
     private async Task<CoinQuote> GetCoinQuote(string key)
     {
-        return await _mBoumApi.GetCoinQuote(_configuration["MBOUM:API_KEY"], key);
+        return await _refitMBoumApi.GetCoinQuote(_configuration["MBOUM:APIKEY"], key);
     }
 
     private async Task<StockQuotes> GetStockQuotes(string symbols)
     {
-        return await _mBoumApi.GetStockQuotes(_configuration["MBOUM:API_KEY"], symbols);
+        var foo = _configuration["MBOUM:API_KEY"];
+        return await _refitMBoumApi.GetStockQuotes(_configuration["MBOUM:APIKEY"], symbols);
     }
 }

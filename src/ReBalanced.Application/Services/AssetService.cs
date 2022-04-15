@@ -17,19 +17,25 @@ public class AssetService : IAssetService
 
     public async Task<decimal> Value(Holding holding)
     {
-        var assetValue = await _assetRepository.GetValue(holding.AssetTicker);
+        var assetValue = await _assetRepository.GetValue(holding.Asset.Ticker);
         Guard.Against.Null(assetValue, nameof(assetValue));
         return assetValue.Value * holding.Quantity;
     }
 
-    public decimal TotalValue(Account account, bool includeFractional = true)
+    public async Task<decimal> TotalValue(Account account, bool includeFractional = true)
     {
-        return account.Holdings.Sum(x =>
+        var sum = 0M;
+
+        foreach (var holding in account.Holdings)
         {
-            var asset = _assetRepository.Get(x.AssetTicker).Result;
+            var asset = await _assetRepository.Get(holding.Asset.Ticker);
             Guard.Against.Null(asset, nameof(asset));
-            var quantity = (includeFractional || (asset.AssetType == AssetType.Cash)) ? x.Quantity : Math.Floor(x.Quantity);
-            return asset.Value * quantity;
-        });
+            var quantity = includeFractional || asset.AssetType == AssetType.Cash
+                ? holding.Quantity
+                : Math.Floor(holding.Quantity);
+            sum += asset.Value * quantity;
+        }
+
+        return sum;
     }
 }

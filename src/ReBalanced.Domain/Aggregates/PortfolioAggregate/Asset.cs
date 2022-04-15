@@ -9,4 +9,4 @@ public enum AssetType
 }
 
 public record Asset(string Ticker, decimal Value, AssetType AssetType, DateTimeOffset Updated = default,
-    string EquivalentTicker = null!);
+    string EquivalentTicker = null);

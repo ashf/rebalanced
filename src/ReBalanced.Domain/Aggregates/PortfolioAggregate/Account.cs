@@ -36,19 +36,19 @@ public class Account : BaseEntity, IAggregateRoot
 
         PriorityAssets = accountType switch
         {
-            AccountType.Taxable => new HashSet<string?> {"VEA", "VWO"},
-            AccountType.Roth => new HashSet<string?> {"VNQ", "BND", "GBTC", "ETHE"},
-            AccountType.CryptoWallet => new HashSet<string?> {"bitcoin", "ethereum"},
-            AccountType.Property => new HashSet<string?> {"PROPERTY"},
+            AccountType.Taxable => new HashSet<string> {"VEA", "VWO"},
+            AccountType.Roth => new HashSet<string> {"VNQ", "BND", "GBTC", "ETHE"},
+            AccountType.CryptoWallet => new HashSet<string> {"bitcoin", "ethereum"},
+            AccountType.Property => new HashSet<string> {"PROPERTY"},
             _ => throw new NotImplementedException()
         };
 
         UndesiredAssets = accountType switch
         {
-            AccountType.Taxable => new HashSet<string?> {"GBTC", "ETHE"},
-            AccountType.Roth => new HashSet<string?> {"CASH"},
-            AccountType.CryptoWallet => new HashSet<string?> {"CASH"},
-            AccountType.Property => new HashSet<string?> {"CASH"},
+            AccountType.Taxable => new HashSet<string> {"GBTC", "ETHE"},
+            AccountType.Roth => new HashSet<string> {"CASH"},
+            AccountType.CryptoWallet => new HashSet<string> {"CASH"},
+            AccountType.Property => new HashSet<string> {"CASH"},
             _ => throw new NotImplementedException()
         };
     }
@@ -61,9 +61,9 @@ public class Account : BaseEntity, IAggregateRoot
 
     public IEnumerable<Holding> Holdings => _holdings.Values.ToList().AsReadOnly();
 
-    public HashSet<string?> PriorityAssets { get; set; }
-    public HashSet<string?> UndesiredAssets { get; set; }
-    public HashSet<string?> PermissibleAssets { get; set; }
+    public HashSet<string> PriorityAssets { get; set; }
+    public HashSet<string> UndesiredAssets { get; set; }
+    public HashSet<string> PermissibleAssets { get; set; }
 
     public void AddHolding(Holding holding)
     {

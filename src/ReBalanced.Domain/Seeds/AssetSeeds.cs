@@ -13,7 +13,7 @@ public class AssetSeeds
     public static readonly Asset GBTC = new("GBTC", 1M, AssetType.Stock, default, "bitcoin");
     public static readonly Asset VEA = new("VEA", 1M, AssetType.Stock);
     public static readonly Asset VGSLX = new("VGSLX", 1M, AssetType.Stock, default, "VNQ");
-    public static readonly Asset VNQ = new("VNQ", 1M, AssetType.Stock);
+    public static readonly Asset VNQ = new("VNQ", 1M, AssetType.Stock, default, "VGSLX");
     public static readonly Asset VTI = new("VTI", 1M, AssetType.Stock);
     public static readonly Asset VWO = new("VWO", 1M, AssetType.Stock);
     public static readonly Asset VXUS = new("VXUS", 1M, AssetType.Stock);

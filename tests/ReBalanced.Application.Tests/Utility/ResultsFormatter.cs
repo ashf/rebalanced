@@ -16,6 +16,7 @@ public static class ResultsFormatter
             var accountName = asset.Split('_')[1];
             var account = portfolio.Accounts.Values.First(x => x.Name == accountName);
             var difference = account.AssetDifference(assetName, amount);
+            if (amount == 0 && difference == 0) continue;
             testOutputHelper.WriteLine($"{asset} : {amount} ({difference})");
         }
     }

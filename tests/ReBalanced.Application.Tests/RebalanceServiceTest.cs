@@ -17,7 +17,7 @@ namespace ReBalanced.Application.Tests;
 
 public class RebalanceServiceTest
 {
-    private readonly Dictionary<string?, Asset> _assetsInMemory = AssetsInMemory.AssetsSimple;
+    private readonly Dictionary<string, Asset> _assetsInMemory = AssetsInMemory.AssetsSimple;
     private readonly ITestOutputHelper _testOutputHelper;
 
     public RebalanceServiceTest(ITestOutputHelper testOutputHelper)
@@ -25,10 +25,9 @@ public class RebalanceServiceTest
         _testOutputHelper = testOutputHelper;
     }
 
-    [Fact]
-    public async Task CanRebalanceSimple()
+    private async Task<(IAssetRepository assetRepository, AssetService assetService, RebalanceService rebalanceService,
+        HashSet<string> allAssetTickersNoCryptoProperty)> Setup()
     {
-        // Arrange
         var assetRepository = Substitute.For<IAssetRepository>();
         assetRepository.Get(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()]);
         assetRepository.GetValue(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()].Value);
@@ -42,11 +41,18 @@ public class RebalanceServiceTest
         var allAssetTickersNoCryptoProperty = await assetRepository.GetAllTickers();
         allAssetTickersNoCryptoProperty.Remove("bitcoin");
         allAssetTickersNoCryptoProperty.Remove("ethereum");
-        allAssetTickersNoCryptoProperty.Remove("ETHE");
-        allAssetTickersNoCryptoProperty.Remove("GBTC");
         allAssetTickersNoCryptoProperty.Remove("PROPERTY");
 
-        var portfolio = new Portfolio("Asher's Portfolio");
+        return (assetRepository, assetService, rebalanceService, allAssetTickersNoCryptoProperty);
+    }
+
+    [Fact]
+    public async Task CanRebalanceSimple()
+    {
+        // Arrange
+        var (assetRepository, assetService, rebalanceService, allAssetTickersNoCryptoProperty) = await Setup();
+
+        var portfolio = new Portfolio("Test Portfolio");
 
         var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false,
             allAssetTickersNoCryptoProperty);
@@ -64,7 +70,7 @@ public class RebalanceServiceTest
         portfolio.AddAccount(rothAccount);
 
         var portfolioTotal = await portfolio.TotalValue(assetService);
-        _testOutputHelper.WriteLine($"PortfolioTotal : {portfolioTotal}");
+        _testOutputHelper.WriteLine($"PortfolioTotal : {portfolioTotal}\n");
 
         var allocations = new Dictionary<string, decimal>
         {
@@ -82,28 +88,17 @@ public class RebalanceServiceTest
 
         // Assert
         _testOutputHelper.PrintResults(rebalanceResults, portfolio);
+        await ResultsChecker.WithinTolerance(_testOutputHelper, rebalanceResults, assetRepository, portfolioTotal,
+            portfolio.Allocations, .05M);
     }
 
     [Fact]
     public async Task CanRebalanceFractional()
     {
         // Arrange
-        var assetRepository = Substitute.For<IAssetRepository>();
-        assetRepository.Get(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()]);
-        assetRepository.GetValue(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()].Value);
-        assetRepository.GetAllTickers().Returns(_assetsInMemory.Keys.ToHashSet());
+        var (assetRepository, assetService, rebalanceService, allAssetTickersNoCryptoProperty) = await Setup();
 
-        var logger = Substitute.For<ILogger>();
-
-        var assetService = new AssetService(assetRepository);
-        var rebalanceService = new RebalanceService(assetService, assetRepository, logger);
-
-        var allAssetTickersNoCryptoProperty = await assetRepository.GetAllTickers();
-        allAssetTickersNoCryptoProperty.Remove("bitcoin");
-        allAssetTickersNoCryptoProperty.Remove("ethereum");
-        allAssetTickersNoCryptoProperty.Remove("PROPERTY");
-
-        var portfolio = new Portfolio("Asher's Portfolio");
+        var portfolio = new Portfolio("Test Portfolio");
 
         var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false,
             allAssetTickersNoCryptoProperty);
@@ -121,7 +116,7 @@ public class RebalanceServiceTest
         portfolio.AddAccount(rothAccount);
 
         var portfolioTotal = await portfolio.TotalValue(assetService);
-        _testOutputHelper.WriteLine($"PortfolioTotal : {portfolioTotal}");
+        _testOutputHelper.WriteLine($"PortfolioTotal : {portfolioTotal}\n");
 
         var allocations = new Dictionary<string, decimal>
         {
@@ -139,38 +134,27 @@ public class RebalanceServiceTest
 
         // Assert
         _testOutputHelper.PrintResults(rebalanceResults, portfolio);
+        await ResultsChecker.WithinTolerance(_testOutputHelper, rebalanceResults, assetRepository, portfolioTotal,
+            portfolio.Allocations, .04M);
     }
 
     [Fact]
     public async Task CanRebalanceEquivalent()
     {
         // Arrange
-        var assetRepository = Substitute.For<IAssetRepository>();
-        assetRepository.Get(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()]);
-        assetRepository.GetValue(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()].Value);
-        assetRepository.GetAllTickers().Returns(_assetsInMemory.Keys.ToHashSet());
+        var (assetRepository, assetService, rebalanceService, _) = await Setup();
 
-        var logger = Substitute.For<ILogger>();
-
-        var assetService = new AssetService(assetRepository);
-        var rebalanceService = new RebalanceService(assetService, assetRepository, logger);
-
-        var allAssetTickersNoCryptoProperty = await assetRepository.GetAllTickers();
-        allAssetTickersNoCryptoProperty.Remove("bitcoin");
-        allAssetTickersNoCryptoProperty.Remove("ethereum");
-        allAssetTickersNoCryptoProperty.Remove("PROPERTY");
-
-        var portfolio = new Portfolio("Asher's Portfolio");
+        var portfolio = new Portfolio("Test Portfolio");
 
         var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false,
-            new HashSet<string?> {"CASH", "GBTC"});
+            new HashSet<string> {"CASH", "GBTC"});
 
         invAccount.AddHolding(new Holding(AssetSeeds.GBTC));
         invAccount.AddHolding(new Holding(AssetSeeds.CASH, 40000M));
         portfolio.AddAccount(invAccount);
 
         var portfolioTotal = await portfolio.TotalValue(assetService);
-        _testOutputHelper.WriteLine($"PortfolioTotal : {portfolioTotal}");
+        _testOutputHelper.WriteLine($"PortfolioTotal : {portfolioTotal}\n");
 
         var allocations = new Dictionary<string, decimal>
         {
@@ -181,9 +165,13 @@ public class RebalanceServiceTest
 
         // Act
         var rebalanceResults = await rebalanceService.Rebalance(portfolio);
+        var rebalancedGbtcValue = rebalanceResults["GBTC_INV"] * await assetRepository.GetValue("GBTC") ?? 0;
 
         // Assert
         _testOutputHelper.PrintResults(rebalanceResults, portfolio);
-        Assert.True(rebalanceResults["GBTC_INV"] == 1000);
+        _testOutputHelper.WriteLine($"Rebalanced GBTC value: {rebalancedGbtcValue}");
+        Assert.True(rebalancedGbtcValue == portfolioTotal);
+        await ResultsChecker.WithinTolerance(_testOutputHelper, rebalanceResults, assetRepository, portfolioTotal,
+            portfolio.Allocations, .01M);
     }
 }

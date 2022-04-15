@@ -18,7 +18,7 @@ public static class AssetsInMemory
         new("PROPERTY", 1M, AssetType.Property, DateTime.UtcNow),
         new("VEA", 47.05M, AssetType.Stock, DateTime.UtcNow),
         new("VGSLX", 154.83M, AssetType.Stock, DateTime.UtcNow, "VNQ"),
-        new("VNQ", 108.92M, AssetType.Stock, DateTime.UtcNow),
+        new("VNQ", 108.92M, AssetType.Stock, DateTime.UtcNow, "VGSLX"),
         new("VTI", 221.2M, AssetType.Stock, DateTime.UtcNow),
         new("VWO", 45.5M, AssetType.Stock, DateTime.UtcNow),
         new("VXUS", 58.58M, AssetType.Stock, DateTime.UtcNow)
@@ -35,7 +35,7 @@ public static class AssetsInMemory
         new("PROPERTY", 1M, AssetType.Property, DateTime.UtcNow),
         new("VEA", 50M, AssetType.Stock, DateTime.UtcNow),
         new("VGSLX", 150M, AssetType.Stock, DateTime.UtcNow, "VNQ"),
-        new("VNQ", 100M, AssetType.Stock, DateTime.UtcNow),
+        new("VNQ", 100M, AssetType.Stock, DateTime.UtcNow, "VGSLX"),
         new("VTI", 200M, AssetType.Stock, DateTime.UtcNow),
         new("VWO", 45M, AssetType.Stock, DateTime.UtcNow),
         new("VXUS", 60M, AssetType.Stock, DateTime.UtcNow)

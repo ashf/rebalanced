@@ -21,3 +21,5 @@ tests/ReBalanced.Infrastructure.Tests/appsettings.development.json
 tests/ReBalanced.Infrastructure.Tests/bin
 tests/ReBalanced.Infrastructure.Tests/obj
 tests/ReBalanced.Application.Tests/appsettings.development.json
+tests/ReBalanced.Domain.Tests/bin
+tests/ReBalanced.Domain.Tests/obj

@@ -32,6 +32,17 @@ public class Account : BaseEntity, IAggregateRoot
         AllowFractional = allowFractional;
         PermissibleAssets = permissibleAssets;
 
+        if (accountType != AccountType.CryptoWallet)
+        {
+            PermissibleAssets.Remove("bitcoin");
+            PermissibleAssets.Remove("ethereum");
+        }
+        
+        if (accountType != AccountType.Property)
+        {
+            PermissibleAssets.Remove("PROPERTY");
+        }
+        
         AddHolding(new Holding(AssetSeeds.CASH));
 
         PriorityAssets = accountType switch

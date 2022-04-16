@@ -26,7 +26,7 @@ public class RebalanceServiceTest
     }
 
     private async Task<(IAssetRepository assetRepository, AssetService assetService, RebalanceService rebalanceService,
-        HashSet<string> allAssetTickersNoCryptoProperty)> Setup()
+        HashSet<string> allAssets)> Setup()
     {
         var assetRepository = Substitute.For<IAssetRepository>();
         assetRepository.Get(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()]);
@@ -38,31 +38,26 @@ public class RebalanceServiceTest
         var assetService = new AssetService(assetRepository);
         var rebalanceService = new RebalanceService(assetService, assetRepository, logger);
 
-        var allAssetTickersNoCryptoProperty = await assetRepository.GetAllTickers();
-        allAssetTickersNoCryptoProperty.Remove("bitcoin");
-        allAssetTickersNoCryptoProperty.Remove("ethereum");
-        allAssetTickersNoCryptoProperty.Remove("PROPERTY");
+        var allAssets = await assetRepository.GetAllTickers();
 
-        return (assetRepository, assetService, rebalanceService, allAssetTickersNoCryptoProperty);
+        return (assetRepository, assetService, rebalanceService, allAssets);
     }
 
     [Fact]
     public async Task CanRebalanceSimple()
     {
         // Arrange
-        var (assetRepository, assetService, rebalanceService, allAssetTickersNoCryptoProperty) = await Setup();
+        var (assetRepository, assetService, rebalanceService, allAssets) = await Setup();
 
         var portfolio = new Portfolio("Test Portfolio");
 
-        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false,
-            allAssetTickersNoCryptoProperty);
+        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false, allAssets);
         invAccount.AddHolding(new Holding(AssetSeeds.VTI, 100M));
         invAccount.AddHolding(new Holding(AssetSeeds.VXUS, 50M));
         invAccount.AddHolding(new Holding(AssetSeeds.CASH, 200M));
         portfolio.AddAccount(invAccount);
 
-        var rothAccount = new Account("Roth", AccountType.Roth, HoldingType.Quantity, false,
-            allAssetTickersNoCryptoProperty);
+        var rothAccount = new Account("Roth", AccountType.Roth, HoldingType.Quantity, false, allAssets);
         rothAccount.AddHolding(new Holding(AssetSeeds.VTI, 10M));
         rothAccount.AddHolding(new Holding(AssetSeeds.VNQ, 15M));
         rothAccount.AddHolding(new Holding(AssetSeeds.BND, 20M));
@@ -96,19 +91,17 @@ public class RebalanceServiceTest
     public async Task CanRebalanceFractional()
     {
         // Arrange
-        var (assetRepository, assetService, rebalanceService, allAssetTickersNoCryptoProperty) = await Setup();
+        var (assetRepository, assetService, rebalanceService, allAssets) = await Setup();
 
         var portfolio = new Portfolio("Test Portfolio");
 
-        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false,
-            allAssetTickersNoCryptoProperty);
+        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false, allAssets);
         invAccount.AddHolding(new Holding(AssetSeeds.VTI, 100.5M));
         invAccount.AddHolding(new Holding(AssetSeeds.VXUS, 50M));
         invAccount.AddHolding(new Holding(AssetSeeds.CASH, 200M));
         portfolio.AddAccount(invAccount);
 
-        var rothAccount = new Account("Roth", AccountType.Roth, HoldingType.Quantity, false,
-            allAssetTickersNoCryptoProperty);
+        var rothAccount = new Account("Roth", AccountType.Roth, HoldingType.Quantity, false, allAssets);
         rothAccount.AddHolding(new Holding(AssetSeeds.VTI, 10M));
         rothAccount.AddHolding(new Holding(AssetSeeds.VNQ, 15M));
         rothAccount.AddHolding(new Holding(AssetSeeds.BND, 20M));

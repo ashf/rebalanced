@@ -38,7 +38,7 @@ public static class ResultsChecker
             else resultsByTicker[allocatedTicker] += value;
         }
 
-        testOutputHelper.WriteLine($"\ntolerance = {tolerance.ToString("P")}");
+        testOutputHelper.WriteLine($"\ntolerance = {tolerance:P}");
 
         foreach (var (ticker, value) in resultsByTicker)
         {
@@ -47,11 +47,11 @@ public static class ResultsChecker
             var lowerTolerance = allocations[ticker].Percentage * (1M - tolerance);
             var upperTolerance = allocations[ticker].Percentage * (1M + tolerance);
             Assert.True(finalAllocation >= lowerTolerance,
-                $"{ticker}: {finalAllocation.ToString("P")} < {lowerTolerance.ToString("P")}");
+                $"{ticker}: {finalAllocation:P} < {lowerTolerance:P)}");
             Assert.True(finalAllocation <= upperTolerance,
-                $"{ticker}: {finalAllocation.ToString("P")} > {upperTolerance.ToString("P")}");
+                $"{ticker}: {finalAllocation:P} > {upperTolerance:P}");
             testOutputHelper.WriteLine(
-                $"{ticker}: {lowerTolerance.ToString("P")} <= {finalAllocation.ToString("P")} <= {upperTolerance.ToString("P")} ({allocations[ticker].Percentage.ToString("P")})");
+                $"{ticker}: {lowerTolerance:P} <= {finalAllocation:P} <= {upperTolerance:P} ({allocations[ticker].Percentage:P})");
         }
     }
 }

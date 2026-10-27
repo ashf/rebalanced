@@ -1,25 +1,45 @@
 using System.Globalization;
+using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ReBalanced.Infrastructure.TwelveData;
 
 public class TwelveDataApi : IPriceApi
 {
+    // each symbol costs a credit, and the free plan allows 8 credits a minute
+    private const int MaxSymbolsPerRequest = 8;
+    private static readonly TimeSpan RateLimitWait = TimeSpan.FromSeconds(61);
+
+    private readonly Func<TimeSpan, Task> _delay;
     private readonly HttpClient _httpClient;
 
-    public TwelveDataApi(HttpClient httpClient)
+    [ActivatorUtilitiesConstructor]
+    public TwelveDataApi(HttpClient httpClient) : this(httpClient, Task.Delay)
     {
-        _httpClient = httpClient;
     }
 
-    // one symbol returns {"price":"1.0"}; several return {"SYM":{"price":"1.0"}, ...} with per-symbol errors inline
+    public TwelveDataApi(HttpClient httpClient, Func<TimeSpan, Task> delay)
+    {
+        _httpClient = httpClient;
+        _delay = delay;
+    }
+
     public async Task<IReadOnlyDictionary<string, decimal>> GetPrices(IReadOnlyCollection<string> symbols)
     {
         var prices = new Dictionary<string, decimal>();
-        if (symbols.Count == 0) return prices;
+        foreach (var batch in symbols.Chunk(MaxSymbolsPerRequest))
+        foreach (var (symbol, price) in await GetBatch(batch))
+            prices[symbol] = price;
 
-        using var response =
-            await _httpClient.GetAsync($"price?symbol={Uri.EscapeDataString(string.Join(',', symbols))}");
+        return prices;
+    }
+
+    // one symbol returns {"price":"1.0"}; several return {"SYM":{"price":"1.0"}, ...} with per-symbol errors inline
+    private async Task<Dictionary<string, decimal>> GetBatch(IReadOnlyCollection<string> symbols)
+    {
+        var url = $"price?symbol={Uri.EscapeDataString(string.Join(',', symbols))}";
+        using var response = await GetWithOneRateLimitRetry(url);
         response.EnsureSuccessStatusCode();
 
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -29,6 +49,7 @@ public class TwelveDataApi : IPriceApi
             throw new HttpRequestException(
                 $"Twelve Data error: {(root.TryGetProperty("message", out var message) ? message.GetString() : "unknown")}");
 
+        var prices = new Dictionary<string, decimal>();
         if (symbols.Count == 1)
         {
             if (TryReadPrice(root, out var price)) prices[symbols.First()] = price;
@@ -41,6 +62,19 @@ public class TwelveDataApi : IPriceApi
                 prices[symbol] = price;
 
         return prices;
+    }
+
+    // the per-minute credit limit answers with HTTP 429 or with {"code":429} in the body
+    private async Task<HttpResponseMessage> GetWithOneRateLimitRetry(string url)
+    {
+        var response = await _httpClient.GetAsync(url);
+        if (response.StatusCode != HttpStatusCode.TooManyRequests &&
+            !(await response.Content.ReadAsStringAsync()).Contains("\"code\":429"))
+            return response;
+
+        response.Dispose();
+        await _delay(RateLimitWait);
+        return await _httpClient.GetAsync(url);
     }
 
     private static bool TryReadPrice(JsonElement quote, out decimal price)

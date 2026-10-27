@@ -23,6 +23,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- the API's gitignored key file, so the Twelve Data key lives in one place -->
+        <None Include="..\..\src\ReBalanced.API\appsettings.Development.json" Link="api.appsettings.Development.json"
+              Condition="Exists('..\..\src\ReBalanced.API\appsettings.Development.json')">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
         <None Update="appsettings.development.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>

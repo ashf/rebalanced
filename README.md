@@ -87,7 +87,7 @@ The repository also has an ASP.NET Core API and the original share-based solver,
 
 or set the environment variable `TwelveData__ApiKey`. The API reads the file only when `ASPNETCORE_ENVIRONMENT=Development`, and will not start without a key.
 
-The key is sent in the `Authorization` header, never in the URL. Each symbol in a request costs one credit, and the free plan allows 8 credits a minute. The spreadsheet has about 12 priced symbols, so `--live-prices` on the free plan can be rejected; any symbol without a live price falls back to the sheet's price with a warning.
+The key is sent in the `Authorization` header, never in the URL. Each symbol in a request costs one credit, and the free plan allows 8 credits a minute. The client asks for at most 8 symbols per request, and when Twelve Data reports the per-minute limit it waits a minute and retries once, so `--live-prices` on the free plan takes about a minute for the sheet's 11 symbols. Any symbol without a live price falls back to the sheet's price with a warning.
 
 ## Tests
 
@@ -95,7 +95,7 @@ The key is sent in the `Authorization` header, never in the URL. Each symbol in 
 dotnet test --filter "Category!=Integration"
 ```
 
-Tests tagged `Category=Integration` call the live Twelve Data API. To run them, put the key in `tests/ReBalanced.Infrastructure.Tests/appsettings.development.json` (also gitignored) and run `dotnet test --filter "Category=Integration"`.
+Tests tagged `Category=Integration` call the live Twelve Data API with the key from `src/ReBalanced.API/appsettings.Development.json` (or `tests/ReBalanced.Infrastructure.Tests/appsettings.development.json`, also gitignored). Run them with `dotnet test --filter "Category=Integration"`.
 
 ## Known limitations
 

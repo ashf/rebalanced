@@ -60,7 +60,7 @@ public static class JsonImporter
                     $"{account.Name} has an empty holding")))
                 .Where(x => x.Value != 0)
                 .ToList();
-            return new ImportedSection(account.Name, account.Kind,
+            return new ImportedSection(account.Kind,
                 new HoldingAccount(account.Name, account.Kind.ToAccountType(), account.Kind.IsTradable(), positions));
         }).ToList();
 
@@ -87,12 +87,13 @@ public static class JsonImporter
         decimal Value() => holding.Value ?? holding.Shares * holding.Price ??
             throw new InvalidOperationException($"{Where()} needs a value, or shares and a price");
 
-        if (account.Kind == SectionKind.Banks || string.Equals(holding.Ticker, "CASH", StringComparison.OrdinalIgnoreCase))
-            return new Position("CASH", AssetClass.Cash, Value(), 1);
+        if (account.Kind == SectionKind.Banks ||
+            string.Equals(holding.Ticker, AssetClasses.CashTicker, StringComparison.OrdinalIgnoreCase))
+            return Position.Cash(Value());
         if (account.Kind == SectionKind.RealEstate)
-            return new Position(label, AssetClass.RealEstate, 1, Value() >= 0
-                ? Value()
-                : throw new InvalidOperationException($"{Where()} has a negative value"));
+            return Value() is var value and >= 0
+                ? new Position(label, AssetClass.RealEstate, 1, value)
+                : throw new InvalidOperationException($"{Where()} has a negative value");
 
         var ticker = holding.Ticker ?? throw new InvalidOperationException($"{Where()} needs a ticker");
         var assetClass = AssetClasses.Of(ticker) ?? throw new InvalidOperationException(

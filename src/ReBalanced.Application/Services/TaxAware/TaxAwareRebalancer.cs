@@ -27,7 +27,6 @@ public class TaxAwareRebalancer
         objective.SetMinimization();
 
         var fixedByClass = new Dictionary<AssetClass, double>();
-        var variablesByClass = new Dictionary<AssetClass, List<Variable>>();
         var holdings = new List<(HoldingAccount Account, string Ticker, AssetClass AssetClass, decimal Current, Variable Final)>();
 
         var warnings = new List<string>();
@@ -87,22 +86,19 @@ public class TaxAwareRebalancer
                 var homes = TaxEfficientPlacement.Homes(assetClass);
                 objective.SetCoefficient(final, homes.Count > 1 && homes[0] != account.AccountType ? LocationWeight : 0);
 
-                if (!variablesByClass.TryGetValue(assetClass, out var classVariables))
-                    variablesByClass[assetClass] = classVariables = new List<Variable>();
-                classVariables.Add(final);
                 holdings.Add((account, ticker, assetClass, value, final));
             }
         }
 
         var bandDollars = (double) (band * total);
-        foreach (var assetClass in targets.Keys.Union(fixedByClass.Keys).Union(variablesByClass.Keys))
+        foreach (var assetClass in targets.Keys.Union(fixedByClass.Keys).Union(holdings.Select(x => x.AssetClass)))
         {
             // class value + under - over = target, with the first bandDollars of each side cheap
             var deviation = solver.MakeConstraint(
                 (double) targets.GetValueOrDefault(assetClass) - fixedByClass.GetValueOrDefault(assetClass),
                 (double) targets.GetValueOrDefault(assetClass) - fixedByClass.GetValueOrDefault(assetClass));
-            foreach (var variable in variablesByClass.GetValueOrDefault(assetClass) ?? new List<Variable>())
-                deviation.SetCoefficient(variable, 1);
+            foreach (var holding in holdings.Where(x => x.AssetClass == assetClass))
+                deviation.SetCoefficient(holding.Final, 1);
 
             foreach (var (sign, upper, penalty) in new[]
                      {
@@ -121,9 +117,10 @@ public class TaxAwareRebalancer
             throw new InvalidOperationException($"No optimal rebalance found (status {status})");
 
         var trades = holdings
+            .Where(x => x.AssetClass != AssetClass.Cash)
             .Select(x => new Trade(x.Account.Name, x.Ticker,
                 Math.Round((decimal) x.Final.SolutionValue() - x.Current, 2), prices.GetValueOrDefault(x.Ticker)))
-            .Where(x => x.Ticker != "CASH" && Math.Abs(x.Amount) >= 0.01M)
+            .Where(x => Math.Abs(x.Amount) >= 0.01M)
             .ToList();
 
         var after = fixedByClass.ToDictionary(x => x.Key, x => (decimal) x.Value);

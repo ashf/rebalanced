@@ -15,6 +15,8 @@ public enum AssetClass
 
 public static class AssetClasses
 {
+    public const string CashTicker = "CASH";
+
     private static readonly Dictionary<string, AssetClass> ByTicker = new(StringComparer.OrdinalIgnoreCase)
     {
         ["VTI"] = AssetClass.UsStocks,
@@ -28,7 +30,7 @@ public static class AssetClasses
         ["ethereum"] = AssetClass.Ethereum,
         ["ETHE"] = AssetClass.Ethereum,
         ["ETH"] = AssetClass.Ethereum, // Grayscale Ethereum Mini Trust ETF
-        ["CASH"] = AssetClass.Cash,
+        [CashTicker] = AssetClass.Cash,
         ["VNQ"] = AssetClass.Reit,
         ["VGSLX"] = AssetClass.Reit,
         ["PROPERTY"] = AssetClass.RealEstate
@@ -43,7 +45,7 @@ public static class AssetClasses
         [AssetClass.Bonds] = "BND",
         [AssetClass.Bitcoin] = "BTC",
         [AssetClass.Ethereum] = "ETH",
-        [AssetClass.Cash] = "CASH",
+        [AssetClass.Cash] = CashTicker,
         [AssetClass.Reit] = "VNQ"
     };
 

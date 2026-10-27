@@ -13,7 +13,7 @@ public enum SectionKind
     RealEstate
 }
 
-public record ImportedSection(string Title, SectionKind Kind, HoldingAccount Account);
+public record ImportedSection(SectionKind Kind, HoldingAccount Account);
 
 public record ImportedPortfolio(
     IReadOnlyList<ImportedSection> Sections,

@@ -9,17 +9,10 @@ namespace ReBalanced.Infrastructure.Repositories;
 
 public class TwelveDataAssetRepository : IAssetRepository
 {
-    // Twelve Data quotes crypto as currency pairs
-    private static readonly Dictionary<string, string> CryptoSymbols = new()
-    {
-        ["bitcoin"] = "BTC/USD",
-        ["ethereum"] = "ETH/USD"
-    };
-
     private readonly IAssetCache _assetCache;
     private readonly ILogger<TwelveDataAssetRepository> _logger;
     private readonly IPriceApi _priceApi;
-    private readonly TimeSpan _staleTime = TimeSpan.FromHours(1);
+    private static readonly TimeSpan StaleTime = TimeSpan.FromHours(1);
 
     public TwelveDataAssetRepository(IPriceApi priceApi, IAssetCache assetCache,
         ILogger<TwelveDataAssetRepository> logger)
@@ -61,7 +54,7 @@ public class TwelveDataAssetRepository : IAssetRepository
     public async Task UpdateValues()
     {
         var oldestUpdate = await _assetCache.OldestCacheItem();
-        if (oldestUpdate.HasValue && DateTime.UtcNow - oldestUpdate <= _staleTime) return;
+        if (oldestUpdate.HasValue && DateTime.UtcNow - oldestUpdate <= StaleTime) return;
 
         var symbols = new Dictionary<string, Asset>();
         foreach (var asset in await _assetCache.Assets())
@@ -121,7 +114,7 @@ public class TwelveDataAssetRepository : IAssetRepository
         return asset.AssetType switch
         {
             AssetType.Stock => asset.Ticker,
-            AssetType.Crypto => CryptoSymbols.GetValueOrDefault(asset.Ticker),
+            AssetType.Crypto => TwelveDataSymbols.CryptoPair(asset.Ticker),
             _ => null
         };
     }

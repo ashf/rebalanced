@@ -26,7 +26,7 @@ public static class SpreadsheetImporter
             Number(Find(sheet, "crypto allocation").CellRight()),
             Number(sheet.Cell(marketCap.Address.RowNumber + 1, marketCap.Address.ColumnNumber + 1)),
             Number(sheet.Cell(marketCap.Address.RowNumber + 2, marketCap.Address.ColumnNumber + 1)),
-            Number(sheet.Cell(FindInColumn(sheet, Label, "CASH").Address.RowNumber, 3)),
+            Number(sheet.Cell(Find(sheet, AssetClasses.CashTicker, Label).Address.RowNumber, 3)),
             Number(Find(sheet, "INCLUDE CRYPTO").CellRight()) != 0,
             Number(Find(sheet, "INCLUDE BANKS").CellRight()) != 0,
             ReadRatios(sheet, warnings),
@@ -45,7 +45,7 @@ public static class SpreadsheetImporter
             return defaultValue;
         }
 
-        decimal? Ratio(decimal numerator, decimal denominator) => denominator > 0 ? numerator / denominator : null;
+        decimal? Ratio(decimal? numerator, decimal? denominator) => denominator > 0 ? numerator / denominator : null;
         decimal? Right(string label) => FindOrNull(sheet, label) is { } cell ? NumberOrNull(cell.CellRight()) : null;
         decimal? Target(string ticker) => FindOrNull(sheet, ticker, Label) is { } cell
             ? NumberOrNull(sheet.Cell(cell.Address.RowNumber, TargetPercent))
@@ -57,15 +57,10 @@ public static class SpreadsheetImporter
         var cashAndProperty = Right("cash + prop alloc");
 
         return new AllocationRatios(
-            Derived("US share of stocks", us is null || developed is null || emerging is null
-                ? null
-                : Ratio(us.Value, us.Value + developed.Value + emerging.Value), fallback.UsShare),
-            Derived("developed share of international", developed is null || emerging is null
-                ? null
-                : Ratio(developed.Value, developed.Value + emerging.Value), fallback.DevelopedShareOfInternational),
-            Derived("bond share", bonds is null || cashAndProperty is null || cryptoInUse is null
-                ? null
-                : Ratio(bonds.Value, 1 - cashAndProperty.Value - cryptoInUse.Value), fallback.BondShare),
+            Derived("US share of stocks", Ratio(us, us + developed + emerging), fallback.UsShare),
+            Derived("developed share of international", Ratio(developed, developed + emerging),
+                fallback.DevelopedShareOfInternational),
+            Derived("bond share", Ratio(bonds, 1 - cashAndProperty - cryptoInUse), fallback.BondShare),
             Derived("real estate floor", MinimumRealEstate(sheet), fallback.MinimumRealEstate));
     }
 
@@ -106,7 +101,7 @@ public static class SpreadsheetImporter
             }
 
             var name = kind == SectionKind.Taxable ? "Taxable" : title;
-            sections.Add(new ImportedSection(title, kind,
+            sections.Add(new ImportedSection(kind,
                 new HoldingAccount(name, kind.ToAccountType(), kind.IsTradable(), positions)));
         }
 
@@ -118,8 +113,8 @@ public static class SpreadsheetImporter
         var label = Text(row.Cell(Label));
         if (label.Length == 0) return null;
 
-        if (label.Equals("CASH", StringComparison.OrdinalIgnoreCase) || kind == SectionKind.Banks)
-            return new Position("CASH", AssetClass.Cash, Number(row.Cell(Value)), 1);
+        if (label.Equals(AssetClasses.CashTicker, StringComparison.OrdinalIgnoreCase) || kind == SectionKind.Banks)
+            return Position.Cash(Number(row.Cell(Value)));
 
         switch (kind)
         {
@@ -164,10 +159,9 @@ public static class SpreadsheetImporter
         return SectionKind.RealEstate;
     }
 
-
-    private static IXLCell Find(IXLWorksheet sheet, string text)
+    private static IXLCell Find(IXLWorksheet sheet, string text, int? column = null)
     {
-        return sheet.CellsUsed().FirstOrDefault(x => Text(x).Equals(text, StringComparison.OrdinalIgnoreCase))
+        return FindOrNull(sheet, text, column)
                ?? throw new InvalidOperationException($"Cell \"{text}\" not found in the spreadsheet");
     }
 
@@ -175,12 +169,6 @@ public static class SpreadsheetImporter
     {
         var cells = column is null ? sheet.CellsUsed() : sheet.Column(column.Value).CellsUsed();
         return cells.FirstOrDefault(x => Text(x).Equals(text, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static IXLCell FindInColumn(IXLWorksheet sheet, int column, string text)
-    {
-        return sheet.Column(column).CellsUsed().FirstOrDefault(x => Text(x) == text)
-               ?? throw new InvalidOperationException($"\"{text}\" not found in column {column}");
     }
 
     private static XLCellValue Read(IXLCell cell)
@@ -203,7 +191,6 @@ public static class SpreadsheetImporter
 
     private static decimal Number(IXLCell cell)
     {
-        var value = Read(cell);
-        return value.IsNumber ? (decimal) value.GetNumber() : 0;
+        return NumberOrNull(cell) ?? 0;
     }
 }

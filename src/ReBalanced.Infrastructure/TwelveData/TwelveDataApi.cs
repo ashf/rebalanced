@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ReBalanced.Infrastructure.TwelveData;
 
@@ -14,12 +13,12 @@ public class TwelveDataApi : IPriceApi
     private readonly Func<TimeSpan, Task> _delay;
     private readonly HttpClient _httpClient;
 
-    [ActivatorUtilitiesConstructor]
     public TwelveDataApi(HttpClient httpClient) : this(httpClient, Task.Delay)
     {
     }
 
-    public TwelveDataApi(HttpClient httpClient, Func<TimeSpan, Task> delay)
+    // tests replace the one-minute rate-limit wait
+    internal TwelveDataApi(HttpClient httpClient, Func<TimeSpan, Task> delay)
     {
         _httpClient = httpClient;
         _delay = delay;
@@ -39,10 +38,7 @@ public class TwelveDataApi : IPriceApi
     private async Task<Dictionary<string, decimal>> GetBatch(IReadOnlyCollection<string> symbols)
     {
         var url = $"price?symbol={Uri.EscapeDataString(string.Join(',', symbols))}";
-        using var response = await GetWithOneRateLimitRetry(url);
-        response.EnsureSuccessStatusCode();
-
-        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        using var json = JsonDocument.Parse(await GetWithOneRateLimitRetry(url));
         var root = json.RootElement;
 
         if (root.TryGetProperty("status", out var status) && status.GetString() == "error")
@@ -65,16 +61,21 @@ public class TwelveDataApi : IPriceApi
     }
 
     // the per-minute credit limit answers with HTTP 429 or with {"code":429} in the body
-    private async Task<HttpResponseMessage> GetWithOneRateLimitRetry(string url)
+    private async Task<string> GetWithOneRateLimitRetry(string url)
     {
-        var response = await _httpClient.GetAsync(url);
-        if (response.StatusCode != HttpStatusCode.TooManyRequests &&
-            !(await response.Content.ReadAsStringAsync()).Contains("\"code\":429"))
-            return response;
+        for (var attempt = 0;; attempt++)
+        {
+            using var response = await _httpClient.GetAsync(url);
+            var body = await response.Content.ReadAsStringAsync();
+            var rateLimited = response.StatusCode == HttpStatusCode.TooManyRequests || body.Contains("\"code\":429");
+            if (!rateLimited || attempt > 0)
+            {
+                response.EnsureSuccessStatusCode();
+                return body;
+            }
 
-        response.Dispose();
-        await _delay(RateLimitWait);
-        return await _httpClient.GetAsync(url);
+            await _delay(RateLimitWait);
+        }
     }
 
     private static bool TryReadPrice(JsonElement quote, out decimal price)

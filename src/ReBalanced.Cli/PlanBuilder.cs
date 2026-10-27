@@ -6,12 +6,11 @@ namespace ReBalanced.Cli;
 public record PlanResult(
     RebalancePlan Plan,
     IReadOnlyList<HoldingAccount> Accounts,
-    decimal BankTransfer,
-    bool IncludeCrypto,
+    AllocationSettings Settings,
     bool IncludeCash,
-    decimal BankCash = 0,
-    AllocationSettings? Settings = null,
-    string? TransferAccount = null);
+    decimal BankCash,
+    decimal BankTransfer,
+    string? TransferAccount);
 
 public static class PlanBuilder
 {
@@ -30,7 +29,7 @@ public static class PlanBuilder
                 .Where(x => includeCrypto || x.AssetClass is not (AssetClass.Bitcoin or AssetClass.Ethereum))
                 .ToList();
             if (bankTransfer > 0 && ReferenceEquals(account, transferTo))
-                positions.Add(new Position("CASH", AssetClass.Cash, bankTransfer, 1));
+                positions.Add(Position.Cash(bankTransfer));
             return account with {Positions = positions};
         }).ToList();
 
@@ -46,6 +45,6 @@ public static class PlanBuilder
         var targets = AllocationTargets.Calculate(TaxAwareRebalancer.ValueByClass(accounts), settings);
 
         return new PlanResult(new TaxAwareRebalancer().Rebalance(accounts, targets, options.Band),
-            accounts, bankTransfer, includeCrypto, includeCash, portfolio.BankCash, settings, transferTo?.Name);
+            accounts, settings, includeCash, portfolio.BankCash, bankTransfer, transferTo?.Name);
     }
 }

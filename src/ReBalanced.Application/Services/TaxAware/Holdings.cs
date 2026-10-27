@@ -5,6 +5,11 @@ namespace ReBalanced.Application.Services.TaxAware;
 public record Position(string Ticker, AssetClass AssetClass, decimal Quantity, decimal Price)
 {
     public decimal Value => Quantity * Price;
+
+    public static Position Cash(decimal value)
+    {
+        return new Position(AssetClasses.CashTicker, AssetClass.Cash, value, 1);
+    }
 }
 
 // a non-tradable account still counts toward the portfolio total and its asset classes

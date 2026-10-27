@@ -24,9 +24,9 @@ public class PlanBuilderTests
         });
         var sections = new[]
         {
-            new ImportedSection("Taxable", SectionKind.Taxable, taxable),
-            new ImportedSection("Roth IRA", SectionKind.RothIra, roth),
-            new ImportedSection("Bitcoin", SectionKind.Wallet, wallet)
+            new ImportedSection(SectionKind.Taxable, taxable),
+            new ImportedSection(SectionKind.RothIra, roth),
+            new ImportedSection(SectionKind.Wallet, wallet)
         };
         return new ImportedPortfolio(sections, bankCash, 0.1M, 3, 1, 50, includeCrypto, includeBanks);
     }

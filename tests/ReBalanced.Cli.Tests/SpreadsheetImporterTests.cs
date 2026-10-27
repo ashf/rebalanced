@@ -193,7 +193,7 @@ public class SpreadsheetImporterTests : IDisposable
     {
         var portfolio = Import();
 
-        Assert.DoesNotContain(portfolio.Sections, x => x.Title == "Avg Buy Price");
+        Assert.DoesNotContain(portfolio.Sections, x => x.Account.Name == "Avg Buy Price");
     }
 
     [Fact]

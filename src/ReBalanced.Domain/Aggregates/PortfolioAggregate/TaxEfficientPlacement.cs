@@ -14,8 +14,7 @@ public static class TaxEfficientPlacement
             AssetClass.Bonds or AssetClass.Reit or AssetClass.Bitcoin or AssetClass.Ethereum =>
                 new[] {AccountType.Roth},
             AssetClass.DevelopedStocks or AssetClass.EmergingStocks => new[] {AccountType.Taxable},
-            AssetClass.UsStocks => new[] {AccountType.Taxable, AccountType.Roth},
-            AssetClass.Cash => new[] {AccountType.Taxable, AccountType.Roth},
+            AssetClass.UsStocks or AssetClass.Cash => new[] {AccountType.Taxable, AccountType.Roth},
             _ => Array.Empty<AccountType>()
         };
     }

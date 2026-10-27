@@ -69,10 +69,7 @@ public class TwelveDataApiTests
             .AddJsonFile("api.appsettings.Development.json", true)
             .AddJsonFile("appsettings.development.json", true)
             .Build();
-        var client = new HttpClient {BaseAddress = new Uri("https://api.twelvedata.com/")};
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("apikey", config["TwelveData:ApiKey"]);
-        var api = new TwelveDataApi(client);
+        var api = new TwelveDataApi(TwelveDataExtensions.Configure(new HttpClient(), config["TwelveData:ApiKey"]!));
 
         var prices = await api.GetPrices(new[] {"VTI", "BTC/USD"});
 
@@ -109,6 +106,18 @@ public class TwelveDataApiTests
         var prices = await api.GetPrices(new[] {"VTI"});
 
         Assert.Equal((378.05M, 1), (prices["VTI"], waits.Count));
+    }
+
+    [Fact]
+    public async Task ThrowsWhenStillRateLimitedAfterTheRetry()
+    {
+        var handler = new StubHandler((HttpStatusCode.TooManyRequests, """{"code":429,"status":"error"}"""));
+        var api = new TwelveDataApi(new HttpClient(handler) {BaseAddress = new Uri("https://api.twelvedata.com/")},
+            _ => Task.CompletedTask);
+
+        var exception = await Record.ExceptionAsync(() => api.GetPrices(new[] {"VTI"}));
+
+        Assert.IsType<HttpRequestException>(exception);
     }
 
     [Fact]

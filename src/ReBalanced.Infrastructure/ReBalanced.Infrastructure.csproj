@@ -16,4 +16,8 @@
     <ItemGroup>
         <ProjectReference Include="..\ReBalanced.Domain\ReBalanced.Domain.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="ReBalanced.Infrastructure.Tests"/>
+    </ItemGroup>
+
 </Project>

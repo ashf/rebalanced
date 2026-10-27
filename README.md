@@ -46,6 +46,17 @@ The report's second line shows the ratios in use.
 
 The output lists every account and whether it is traded or held, a bank transfer when `--cash include` finds money to invest, the trades per account as dollar amounts (Vanguard accepts dollar-based orders) with approximate share counts, and a table of target, current and resulting allocation per asset class.
 
+## Google Sheets menu
+
+`apps-script/Rebalance.gs` brings the same rebalancing into the spreadsheet itself. It adds a **Rebalance** menu:
+
+- **Calculate new orders** reads the sheet's live `GOOGLEFINANCE` prices, each account's current share counts, the targets and the `INCLUDE CRYPTO` / `INCLUDE BANKS` switches, then writes each traded account's orders, in shares, into the **New Order** column. The sheet's own formulas then show the after-trade values and totals. A dialog lists the trades, the allocation before and after, and any warnings.
+- **Clear new orders** empties those cells again.
+
+It solves the same linear program as the command-line tool, with Apps Script's built-in `LinearOptimizationService`, so the two give the same orders on the same sheet. To install: open the sheet, choose Extensions, Apps Script, replace the editor's contents with `Rebalance.gs`, save, and reload the sheet. The first run asks you to authorize the script to edit the spreadsheet. The script needs the V8 runtime, the default for new Apps Script projects. It replaces anything already in the taxable and Roth IRA New Order cells, and each account's CASH amount must be in its Difference cell.
+
+The script and the C# code implement the same rules twice, so a change to the placement table, the penalties or the target formulas has to be made in both.
+
 ## How the command-line tool works
 
 **Import.** `SpreadsheetImporter` reads the values the sheet last calculated (Google Sheets functions such as `GOOGLEFINANCE` cannot be recalculated outside Google). Below the summary table, each section is classified by its title: the taxable account and the Roth IRA are traded; the 401(k), the crypto wallets and anything unrecognized, which is treated as real estate, are held as they are but count toward the total. Bank rows are summed into one cash balance. A ticker the importer does not know is an error; add it to `AssetClasses`.
@@ -91,6 +102,7 @@ The repository also has an ASP.NET Core API and the original share-based solver,
 | `src/ReBalanced.Infrastructure` | Twelve Data price client, LiteDB price cache and portfolio repository |
 | `src/ReBalanced.API` | ASP.NET Core host: dependency wiring, Swagger, logging |
 | `tests/` | xUnit tests for each project |
+| `apps-script/Rebalance.gs` | The Google Sheets menu (Apps Script) |
 | `scripts/rebalance.linq` | The original LINQPad prototype |
 
 ## Twelve Data key

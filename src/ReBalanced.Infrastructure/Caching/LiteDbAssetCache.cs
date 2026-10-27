@@ -42,6 +42,6 @@ public class LiteDbAssetCache : IAssetCache
     {
         return (await _assets.FindAsync(asset =>
                 asset.AssetType == AssetType.Stock || asset.AssetType == AssetType.Crypto))
-            .Min(x => x.Updated);
+            .Min(x => (DateTimeOffset?) x.Updated);
     }
 }

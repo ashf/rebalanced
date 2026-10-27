@@ -6,8 +6,10 @@ using ReBalanced.Domain.ValueTypes;
 
 namespace ReBalanced.Infrastructure.LiteDB;
 
-public class LiteDbContext
+public class LiteDbContext : IDisposable
 {
+    private static readonly BsonMapper Mapper = CreateMapper();
+
     public readonly LiteDatabaseAsync Context;
 
     public LiteDbContext(IOptions<LiteDbConfig> configs)
@@ -15,7 +17,7 @@ public class LiteDbContext
         LiteDatabaseAsync? db;
         try
         {
-            db = new LiteDatabaseAsync(configs.Value.DatabasePath);
+            db = new LiteDatabaseAsync(configs.Value.DatabasePath, Mapper);
         }
         catch (Exception ex)
         {
@@ -23,13 +25,16 @@ public class LiteDbContext
         }
 
         Context = db;
-
-        SetMappings();
     }
 
-    private void SetMappings()
+    public void Dispose()
     {
-        var mapper = BsonMapper.Global;
+        Context.Dispose();
+    }
+
+    private static BsonMapper CreateMapper()
+    {
+        var mapper = new BsonMapper();
 
         // https://stackoverflow.com/a/66497628
         // DateTimeOffset truncates milliseconds by default
@@ -47,5 +52,7 @@ public class LiteDbContext
 
         mapper.Entity<Portfolio>()
             .Id(x => x.Id);
+
+        return mapper;
     }
 }

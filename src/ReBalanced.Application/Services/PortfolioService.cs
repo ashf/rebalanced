@@ -49,14 +49,12 @@ public class PortfolioService : IPortfolioService
         return await _portfolioRepository.Update(id, portfolio);
     }
 
-    public async Task Rebalance(Guid id)
+    public async Task<Dictionary<string, decimal>> Rebalance(Guid id)
     {
         var portfolio = await Get(id);
 
         Guard.Against.Null(portfolio, nameof(portfolio));
 
-        var reblanceResult = _rebalanceService.Rebalance(portfolio);
-
-        // TODO: do something with result
+        return await _rebalanceService.Rebalance(portfolio);
     }
 }

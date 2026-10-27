@@ -13,7 +13,7 @@ public static class ResultsFormatter
         foreach (var (asset, amount) in rebalanceResults!)
         {
             var assetName = asset.Split('_')[0];
-            var accountName = asset.Split('_')[1];
+            var accountName = asset.Split('_', 2)[1];
             var account = portfolio.Accounts.Values.First(x => x.Name == accountName);
             var difference = account.AssetDifference(assetName, amount);
             if (amount == 0 && difference == 0) continue;

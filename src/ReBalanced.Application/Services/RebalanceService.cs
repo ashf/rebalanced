@@ -12,14 +12,15 @@ namespace ReBalanced.Application.Services;
 public class RebalanceService : IRebalanceService
 {
     private const int MaxIterations = 1000;
+    private const double ToleranceStep = 0.0001;
     private readonly IAssetRepository _assetRepository;
     private readonly IAssetService _assetService;
-    private readonly ILogger _logger;
+    private readonly ILogger<RebalanceService> _logger;
 
     public RebalanceService(
         IAssetService assetService,
         IAssetRepository assetRepository,
-        ILogger logger)
+        ILogger<RebalanceService> logger)
     {
         _assetService = assetService;
         _assetRepository = assetRepository;
@@ -35,7 +36,18 @@ public class RebalanceService : IRebalanceService
                 x => x.Key,
                 x => x.Value.Percentage * portfolioTotal);
 
-        var tolerance = 0.00;
+        // an infeasible portfolio would otherwise run every iteration before failing
+        var (widestSolver, widestConstraints, widestOptimization) =
+            await SetupSystem(targetValuePerAsset, portfolio, MaxIterations * ToleranceStep);
+        using (widestSolver)
+        {
+            var (widestStatus, _) = SolveSystem(widestSolver, widestConstraints, widestOptimization);
+            if (widestStatus != Solver.ResultStatus.OPTIMAL)
+                throw new InvalidOperationException(
+                    $"No optimal rebalance within {MaxIterations * ToleranceStep:P0} tolerance (status {widestStatus})");
+        }
+
+        var tolerance = 0.0;
 
         var resultStatus = Solver.ResultStatus.NOT_SOLVED;
         var resultValues = new Dictionary<string, decimal>();
@@ -43,28 +55,29 @@ public class RebalanceService : IRebalanceService
         double objectiveValue = 0;
         var iteration = 0;
 
-        while (resultStatus != Solver.ResultStatus.OPTIMAL && objectiveValue <= 0 && iteration <= MaxIterations)
+        while (resultStatus != Solver.ResultStatus.OPTIMAL && iteration <= MaxIterations)
         {
             var (solver, constraints, optimization) =
                 await SetupSystem(targetValuePerAsset, portfolio, tolerance);
+            using var disposableSolver = solver;
 
-            _logger.LogInformation("{Iteration}", iteration);
+            _logger.LogDebug("{Iteration}", iteration);
             (resultStatus, resultValues) = SolveSystem(solver, constraints, optimization);
 
             objectiveValue = solver.Objective().Value();
 
-            tolerance += 0.0001;
             iteration++;
+            tolerance = iteration * ToleranceStep;
         }
 
-        // Check that the problem has an optimal solution.
-        if (resultStatus == Solver.ResultStatus.OPTIMAL)
-        {
-            _logger.LogDebug("Solution:");
-            _logger.LogDebug("iterations = {Iteration}", iteration);
-            _logger.LogDebug("tolerance = {Tolerance}", tolerance);
-            _logger.LogDebug("Objective value = {ObjectiveValue}", objectiveValue);
-        }
+        if (resultStatus != Solver.ResultStatus.OPTIMAL)
+            throw new InvalidOperationException(
+                $"No optimal rebalance found after {iteration} iterations (status {resultStatus})");
+
+        _logger.LogDebug("Solution:");
+        _logger.LogDebug("iterations = {Iteration}", iteration);
+        _logger.LogDebug("tolerance = {Tolerance}", tolerance);
+        _logger.LogDebug("Objective value = {ObjectiveValue}", objectiveValue);
 
         AddFractionalsToResults(portfolio, resultValues);
 
@@ -73,23 +86,14 @@ public class RebalanceService : IRebalanceService
 
     private static void AddFractionalsToResults(Portfolio portfolio, Dictionary<string, decimal> resultValues)
     {
-        // add back in fractionals
-        foreach (var (resultKey, resultValue) in resultValues)
+        // whole-share accounts are solved without their fractional shares, so add them back
+        foreach (var account in portfolio.Accounts.Values.Where(x => !x.AllowFractional))
+        foreach (var holding in account.Holdings.Where(x => x.Asset.AssetType != AssetType.Cash))
         {
-            var assetName = resultKey.Split('_')[0];
-            var accountName = resultKey.Split('_')[1];
+            var resultKey = GenerateVariableName(holding.Asset.Ticker, account.Name);
+            if (!resultValues.TryGetValue(resultKey, out var resultValue)) continue;
 
-            var account = portfolio.Accounts.Values.First(x => x.Name == accountName);
-            Guard.Against.Null(account, nameof(account));
-
-            if (account.AllowFractional) continue;
-
-            var holding = account.Holdings.FirstOrDefault(x => x.Asset.Ticker == assetName);
-            if (holding is null) continue;
-
-            var fraction = holding.Quantity - Math.Truncate(holding.Quantity);
-
-            resultValues[resultKey] = resultValue + fraction;
+            resultValues[resultKey] = resultValue + holding.Quantity - Math.Truncate(holding.Quantity);
         }
     }
 
@@ -143,25 +147,23 @@ public class RebalanceService : IRebalanceService
     {
         var constraints = new List<LinearConstraint>();
 
+        // CASH is always in the sum so whole-share accounts can hold their leftover value
+        var tickers = allocatedTickers.Append("CASH").ToHashSet();
+
         foreach (var account in accounts)
         {
             LinearExpr? expr = null;
-            foreach (var assetName in allocatedTickers)
+            var used = new HashSet<string>();
+            foreach (var assetName in tickers)
             {
                 var asset = await _assetRepository.Get(assetName);
                 Guard.Against.Null(asset, nameof(asset));
 
-                switch (account.PermissibleAssets.Contains(assetName))
-                {
-                    case false when account.PermissibleAssets.Contains(asset.EquivalentTicker):
-                        asset = await _assetRepository.Get(asset.EquivalentTicker);
-                        Guard.Against.Null(asset, nameof(asset));
-                        break;
-                    case false:
-                        continue;
-                }
+                var permitted = await ResolvePermittedAsset(account, asset);
+                if (permitted is null || !used.Add(permitted.Ticker)) continue;
 
-                var localExpr = (double) asset.Value * variables[GenerateVariableName(asset.Ticker, account.Name)];
+                var localExpr = (double) permitted.Value *
+                                variables[GenerateVariableName(permitted.Ticker, account.Name)];
                 AddExpr(ref expr, localExpr);
             }
 
@@ -187,7 +189,11 @@ public class RebalanceService : IRebalanceService
 
             var expr = await GenerateTargetAmountConstraintPerAsset(accounts, variables, asset);
 
-            if (expr is null) continue;
+            if (expr is null)
+            {
+                if (asset.AssetType == AssetType.Cash) continue;
+                throw new InvalidOperationException($"No account can hold {assetName} or its equivalent");
+            }
             constraints.Add(expr >= (double) targetValuePerAsset[assetName] * (1 - tolerance));
             constraints.Add(expr <= (double) targetValuePerAsset[assetName] * (1 + tolerance));
         }
@@ -207,30 +213,26 @@ public class RebalanceService : IRebalanceService
             // dont create constraint for cash if undesired
             if (asset.AssetType == AssetType.Cash && account.UndesiredAssets.Contains("CASH")) continue;
 
-            var assetValue = (double) asset.Value;
+            var permitted = await ResolvePermittedAsset(account, asset);
+            if (permitted is null) continue;
 
-            if (account.PermissibleAssets.Contains(asset.Ticker))
-            {
-                var localExpr = assetValue * variables[GenerateVariableName(asset.Ticker, account.Name)];
-                AddExpr(ref expr, localExpr);
-            }
-            else
-            {
-                // check if EquivalentTicker is allowed (if asset isn't)
-                if (asset.EquivalentTicker is not null &&
-                    !account.PermissibleAssets.Contains(asset.EquivalentTicker)) continue;
-                if (asset.EquivalentTicker is null) continue;
-
-                var equivAsset = await _assetRepository.Get(asset.EquivalentTicker);
-                Guard.Against.Null(equivAsset, nameof(equivAsset));
-
-                var localEquivExpr = (double) equivAsset.Value *
-                                     variables[GenerateVariableName(equivAsset.Ticker, account.Name)];
-                AddExpr(ref expr, localEquivExpr);
-            }
+            var localExpr = (double) permitted.Value *
+                            variables[GenerateVariableName(permitted.Ticker, account.Name)];
+            AddExpr(ref expr, localExpr);
         }
 
         return expr;
+    }
+
+    // the asset itself if the account can hold it, else its equivalent if the account can hold that
+    private async Task<Asset?> ResolvePermittedAsset(Account account, Asset asset)
+    {
+        if (account.PermissibleAssets.Contains(asset.Ticker)) return asset;
+        if (asset.EquivalentTicker is null || !account.PermissibleAssets.Contains(asset.EquivalentTicker)) return null;
+
+        var equivAsset = await _assetRepository.Get(asset.EquivalentTicker);
+        Guard.Against.Null(equivAsset, nameof(equivAsset));
+        return equivAsset;
     }
 
     // b + g + h - cash1 - cash2;

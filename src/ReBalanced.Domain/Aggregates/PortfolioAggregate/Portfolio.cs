@@ -11,7 +11,7 @@ public class Portfolio : BaseEntity, IAggregateRoot
     {
         Name = name;
 
-        Allocations.Add("CASH", new Allocation("CASH", 100));
+        Allocations.Add("CASH", new Allocation("CASH", 1));
     }
 
     public string Name { get; }
@@ -33,6 +33,8 @@ public class Portfolio : BaseEntity, IAggregateRoot
     {
         Guard.Against.InvalidInput(account, nameof(Account), x => !Accounts.ContainsKey(x.Id),
             "Portfolio already contains this account");
+        Guard.Against.InvalidInput(account, nameof(Account), x => Accounts.Values.All(a => a.Name != x.Name),
+            "Portfolio already contains an account with this name");
 
         Accounts.Add(account.Id, account);
     }

@@ -2,6 +2,6 @@
 
 public abstract class BaseEntity
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    public Guid Id { get; protected set; } = Guid.NewGuid();
     public bool IsDeleted { get; set; } = false;
 }

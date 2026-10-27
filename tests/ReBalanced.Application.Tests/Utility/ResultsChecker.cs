@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
@@ -40,14 +41,16 @@ public static class ResultsChecker
 
         testOutputHelper.WriteLine($"\ntolerance = {tolerance:P}");
 
-        foreach (var (ticker, value) in resultsByTicker)
+        Assert.All(resultsByTicker.Keys, ticker => Assert.Contains(ticker, allocations.Keys));
+        Assert.Equal((double) portfolioTotal, (double) resultsByTicker.Values.Sum(), 2);
+
+        foreach (var ticker in allocations.Keys)
         {
-            if (value == 0 && !allocations.ContainsKey(ticker)) continue;
-            var finalAllocation = value / portfolioTotal;
+            var finalAllocation = resultsByTicker.GetValueOrDefault(ticker) / portfolioTotal;
             var lowerTolerance = allocations[ticker].Percentage * (1M - tolerance);
             var upperTolerance = allocations[ticker].Percentage * (1M + tolerance);
             Assert.True(finalAllocation >= lowerTolerance,
-                $"{ticker}: {finalAllocation:P} < {lowerTolerance:P)}");
+                $"{ticker}: {finalAllocation:P} < {lowerTolerance:P}");
             Assert.True(finalAllocation <= upperTolerance,
                 $"{ticker}: {finalAllocation:P} > {upperTolerance:P}");
             testOutputHelper.WriteLine(

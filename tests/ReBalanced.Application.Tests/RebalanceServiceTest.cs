@@ -1,7 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using ReBalanced.Application.Services;
 using ReBalanced.Application.Services.Extensions;
@@ -29,14 +30,14 @@ public class RebalanceServiceTest
         HashSet<string> allAssets)> Setup()
     {
         var assetRepository = Substitute.For<IAssetRepository>();
-        assetRepository.Get(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()]);
-        assetRepository.GetValue(Arg.Any<string>()).Returns(x => _assetsInMemory[x.Arg<string>()].Value);
+        assetRepository.Get(Arg.Any<string>()).Returns(x => _assetsInMemory.GetValueOrDefault(x.Arg<string>()));
+        assetRepository.GetValue(Arg.Any<string>())
+            .Returns(x => _assetsInMemory.GetValueOrDefault(x.Arg<string>())?.Value);
         assetRepository.GetAllTickers().Returns(_assetsInMemory.Keys.ToHashSet());
 
-        var logger = Substitute.For<ILogger>();
-
         var assetService = new AssetService(assetRepository);
-        var rebalanceService = new RebalanceService(assetService, assetRepository, logger);
+        var rebalanceService =
+            new RebalanceService(assetService, assetRepository, NullLogger<RebalanceService>.Instance);
 
         var allAssets = await assetRepository.GetAllTickers();
 
@@ -155,16 +156,109 @@ public class RebalanceServiceTest
         };
 
         portfolio.SetAllocation(allocations.Select(x => new Allocation(x.Key, x.Value)).ToList());
+        var gbtcPrice = _assetsInMemory["GBTC"].Value;
 
         // Act
         var rebalanceResults = await rebalanceService.Rebalance(portfolio);
-        var rebalancedGbtcValue = rebalanceResults["GBTC_INV"] * await assetRepository.GetValue("GBTC") ?? 0;
 
         // Assert
         _testOutputHelper.PrintResults(rebalanceResults, portfolio);
-        _testOutputHelper.WriteLine($"Rebalanced GBTC value: {rebalancedGbtcValue}");
-        Assert.True(rebalancedGbtcValue == portfolioTotal);
+        Assert.Equal((double) portfolioTotal, (double) (rebalanceResults["GBTC_INV"] * gbtcPrice), 2);
         await ResultsChecker.WithinTolerance(_testOutputHelper, rebalanceResults, assetRepository, portfolioTotal,
             portfolio.Allocations, .01M);
+    }
+
+    [Fact]
+    public async Task CanRebalanceAccountNameWithUnderscore()
+    {
+        // Arrange
+        var (assetRepository, assetService, rebalanceService, allAssets) = await Setup();
+
+        var portfolio = new Portfolio("Test Portfolio");
+
+        var invAccount = new Account("MY_INV", AccountType.Taxable, HoldingType.Quantity, false, allAssets);
+        invAccount.AddHolding(new Holding(AssetSeeds.VTI, 100.5M));
+        invAccount.AddHolding(new Holding(AssetSeeds.CASH, 2000M));
+        portfolio.AddAccount(invAccount);
+
+        var portfolioTotal = await portfolio.TotalValue(assetService);
+
+        portfolio.SetAllocation(new List<Allocation> {new("VTI", .9M), new("CASH", .1M)});
+
+        // Act
+        var rebalanceResults = await rebalanceService.Rebalance(portfolio);
+
+        // Assert
+        _testOutputHelper.PrintResults(rebalanceResults, portfolio);
+        await ResultsChecker.WithinTolerance(_testOutputHelper, rebalanceResults, assetRepository, portfolioTotal,
+            portfolio.Allocations, .05M);
+    }
+
+    [Fact]
+    public async Task RebalanceThrowsWhenNoOptimalSolution()
+    {
+        // Arrange
+        var (_, _, rebalanceService, allAssets) = await Setup();
+
+        var portfolio = new Portfolio("Test Portfolio");
+
+        // one whole VTI share is worth the whole account, so a 50% VTI target is unreachable
+        var rothAccount = new Account("Roth", AccountType.Roth, HoldingType.Quantity, false, allAssets);
+        rothAccount.AddHolding(new Holding(AssetSeeds.VTI, 1M));
+        portfolio.AddAccount(rothAccount);
+
+        portfolio.SetAllocation(new List<Allocation> {new("VTI", .5M), new("VNQ", .5M)});
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => rebalanceService.Rebalance(portfolio));
+
+        // Assert
+        Assert.IsType<InvalidOperationException>(exception);
+    }
+
+    [Fact]
+    public async Task RebalanceThrowsWhenNoAccountCanHoldAllocation()
+    {
+        // Arrange
+        var (_, _, rebalanceService, allAssets) = await Setup();
+
+        var portfolio = new Portfolio("Test Portfolio");
+
+        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false, allAssets);
+        invAccount.AddHolding(new Holding(AssetSeeds.CASH, 1000M));
+        portfolio.AddAccount(invAccount);
+
+        portfolio.SetAllocation(new List<Allocation> {new("PROPERTY", .5M), new("CASH", .5M)});
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => rebalanceService.Rebalance(portfolio));
+
+        // Assert
+        Assert.IsType<InvalidOperationException>(exception);
+        Assert.Contains("PROPERTY", exception.Message);
+    }
+
+    [Fact]
+    public async Task RebalanceCountsSharedEquivalentOnce()
+    {
+        // Arrange
+        var (_, _, rebalanceService, _) = await Setup();
+
+        var portfolio = new Portfolio("Test Portfolio");
+
+        var invAccount = new Account("INV", AccountType.Taxable, HoldingType.Quantity, false,
+            new HashSet<string> {"CASH", "GBTC"});
+        invAccount.AddHolding(new Holding(AssetSeeds.CASH, 40000M));
+        portfolio.AddAccount(invAccount);
+
+        // bitcoin and GBTC both resolve to the GBTC position in this account
+        portfolio.SetAllocation(new List<Allocation> {new("bitcoin", .5M), new("GBTC", .5M)});
+        var gbtcPrice = _assetsInMemory["GBTC"].Value;
+
+        // Act
+        var rebalanceResults = await rebalanceService.Rebalance(portfolio);
+
+        // Assert
+        Assert.Equal(40000.0, (double) (rebalanceResults["GBTC_INV"] * gbtcPrice + rebalanceResults["CASH_INV"]), 2);
     }
 }

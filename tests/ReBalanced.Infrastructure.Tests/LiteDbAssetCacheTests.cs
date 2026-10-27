@@ -16,12 +16,23 @@ public class LiteDbAssetCacheTests
         var db = LiteDbUtility.GetTestLiteDb();
         var cache = new LiteDbAssetCache(db);
 
-        // Act
         var asset = new Asset("BND", 77.25M, AssetType.Stock, DateTime.UtcNow);
         await cache.Upsert(asset.Ticker, asset);
+
+        // Act
         var returnedAsset = await cache.Get(asset.Ticker);
 
         // Assert
         Assert.Equal(asset, returnedAsset);
+    }
+
+    [Fact]
+    public async Task OldestCacheItemIsNullWhenEmpty()
+    {
+        var cache = new LiteDbAssetCache(LiteDbUtility.GetTestLiteDb());
+
+        var oldest = await cache.OldestCacheItem();
+
+        Assert.Null(oldest);
     }
 }

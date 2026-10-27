@@ -1,17 +1,17 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
+using Microsoft.OpenApi;
 using ReBalanced.API.Middleware;
 using ReBalanced.Application.Services;
 using ReBalanced.Application.Services.Interfaces;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 using ReBalanced.Domain.Providers;
+using ReBalanced.Infrastructure.Caching;
 using ReBalanced.Infrastructure.LiteDB;
-using ReBalanced.Infrastructure.MBoum;
 using ReBalanced.Infrastructure.Repositories;
+using ReBalanced.Infrastructure.TwelveData;
 using Serilog;
 using Serilog.Events;
 
@@ -19,24 +19,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Api Version
 builder.Services.AddApiVersioning(options =>
-{
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.DefaultApiVersion = new ApiVersion(1, 0); // 1.0
-    options.ReportApiVersions = true;
-});
-
-// Swagger Api Version expansion
-builder.Services.AddVersionedApiExplorer(setup =>
-{
-    setup.GroupNameFormat = "'v'VVV";
-    setup.SubstituteApiVersionInUrl = true;
-});
-
-// MediatR
-builder.Services.AddMediatR(typeof(Program));
-
-// auto mapper
-builder.Services.AddAutoMapper(typeof(Program));
+    {
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.DefaultApiVersion = new ApiVersion(1, 0); // 1.0
+        options.ReportApiVersions = true;
+    })
+    // Swagger Api Version expansion
+    .AddApiExplorer(setup =>
+    {
+        setup.GroupNameFormat = "'v'VVV";
+        setup.SubstituteApiVersionInUrl = true;
+    });
 
 // API Layer Controllers
 builder.Services.AddControllers()
@@ -49,9 +42,13 @@ builder.Services.AddControllers()
 
 // Application Layer services
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
+builder.Services.AddScoped<IRebalanceService, RebalanceService>();
+builder.Services.AddScoped<IAssetService, AssetService>();
 
 // Infrastructure Layer repositories
 builder.Services.AddScoped<IEntityRepository<Portfolio>, LiteDbPortfolioRepository>();
+builder.Services.AddScoped<IAssetRepository, TwelveDataAssetRepository>();
+builder.Services.AddScoped<IAssetCache, LiteDbAssetCache>();
 
 // Infrastructure Layer DB context
 var folder = Environment.SpecialFolder.LocalApplicationData;
@@ -61,10 +58,12 @@ var dbPath = Path.Join(path, "rebalanced.db");
 builder.Services.AddLiteDb(dbPath);
 
 // Infrastructure Layer REST Wrapper
-builder.Services.Configure<MBoumApiOptions>(
-    builder.Configuration.GetSection(MBoumApiOptions.MBoum));
+builder.Services.AddOptions<TwelveDataOptions>()
+    .Bind(builder.Configuration.GetSection(TwelveDataOptions.TwelveData))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ApiKey), "TwelveData:ApiKey is not configured")
+    .ValidateOnStart();
 
-builder.Services.AddMBoumApi("https://mboum.com/api/v1");
+builder.Services.AddTwelveDataApi();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -79,7 +78,6 @@ builder.Services.AddSwaggerGen(options =>
 builder.Host.UseSerilog((hostingContext, services, loggerConfiguration) =>
     loggerConfiguration
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Information)
-        .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Information)
         .Enrich.FromLogContext()
         .WriteTo.Console());
 
@@ -87,9 +85,9 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 
-app.MapControllers();
-
 if (app.Environment.IsDevelopment()) app.UseMiddleware<ErrorHandlerMiddleware>();
+
+app.MapControllers();
 
 // Swagger UI
 app.UseSwagger();

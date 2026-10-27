@@ -36,7 +36,7 @@ public class LiteDbPortfolioRepository : IEntityRepository<Portfolio>
     public async Task<Portfolio?> Get(Guid id)
     {
         var portfolio = await _portfolios.FindByIdAsync(id);
-        return !portfolio.IsDeleted ? portfolio : null;
+        return portfolio is {IsDeleted: false} ? portfolio : null;
     }
 
     public async Task<ICollection<Portfolio>> Get(ICollection<Guid> ids)

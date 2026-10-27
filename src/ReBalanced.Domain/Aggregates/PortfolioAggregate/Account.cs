@@ -30,7 +30,7 @@ public class Account : BaseEntity, IAggregateRoot
         AccountType = accountType;
         HoldingType = holdingType;
         AllowFractional = allowFractional;
-        PermissibleAssets = permissibleAssets;
+        PermissibleAssets = new HashSet<string>(permissibleAssets);
 
         if (accountType != AccountType.CryptoWallet)
         {
@@ -45,23 +45,8 @@ public class Account : BaseEntity, IAggregateRoot
         
         AddHolding(new Holding(AssetSeeds.CASH));
 
-        PriorityAssets = accountType switch
-        {
-            AccountType.Taxable => new HashSet<string> {"VEA", "VWO"},
-            AccountType.Roth => new HashSet<string> {"VNQ", "BND", "GBTC", "ETHE"},
-            AccountType.CryptoWallet => new HashSet<string> {"bitcoin", "ethereum"},
-            AccountType.Property => new HashSet<string> {"PROPERTY"},
-            _ => throw new NotImplementedException()
-        };
-
-        UndesiredAssets = accountType switch
-        {
-            AccountType.Taxable => new HashSet<string> {"GBTC", "ETHE"},
-            AccountType.Roth => new HashSet<string> {"CASH"},
-            AccountType.CryptoWallet => new HashSet<string> {"CASH"},
-            AccountType.Property => new HashSet<string> {"CASH"},
-            _ => throw new NotImplementedException()
-        };
+        PriorityAssets = AccountRules.PriorityAssets(accountType);
+        UndesiredAssets = AccountRules.UndesiredAssets(accountType);
     }
 
     public bool AllowFractional { get; }

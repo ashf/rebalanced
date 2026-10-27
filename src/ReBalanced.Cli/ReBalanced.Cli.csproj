@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ReBalanced.Application\ReBalanced.Application.csproj" />
+    <ProjectReference Include="..\ReBalanced.Infrastructure\ReBalanced.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.14" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>rebalanced</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- shares the API's gitignored key file so the Twelve Data key lives in one place -->
+    <None Include="..\ReBalanced.API\appsettings.Development.json" Link="appsettings.Development.json"
+          Condition="Exists('..\ReBalanced.API\appsettings.Development.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

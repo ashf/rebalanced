@@ -23,3 +23,6 @@ tests/ReBalanced.Infrastructure.Tests/obj
 tests/ReBalanced.Application.Tests/appsettings.development.json
 tests/ReBalanced.Domain.Tests/bin
 tests/ReBalanced.Domain.Tests/obj
+
+bin/
+obj/

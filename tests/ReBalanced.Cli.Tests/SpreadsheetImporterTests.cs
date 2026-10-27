@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using ReBalanced.Application.Services.TaxAware;
 
 namespace ReBalanced.Cli.Tests;
 
@@ -12,7 +13,7 @@ public class SpreadsheetImporterTests : IDisposable
     }
 
     private ImportedPortfolio Import(string? extraTaxableTicker = null, double extraTaxablePrice = 1,
-        string? strayLabel = null)
+        string? strayLabel = null, bool withRatios = false, bool reitAsFormula = false, bool blankBondCell = false)
     {
         using (var workbook = new XLWorkbook())
         {
@@ -23,6 +24,29 @@ public class SpreadsheetImporterTests : IDisposable
             sheet.Cell(3, 1).Value = "CASH";
             sheet.Cell(3, 3).Value = 500;
             sheet.Cell(4, 1).Value = "Total Investment";
+            if (withRatios)
+            {
+                // Target % column and summary cells that encode a 60% US / 62.5% developed / 8% bond / 7% floor mix
+                sheet.Cell(2, 5).Value = 0.48;
+                sheet.Cell(4, 1).Value = "VEA";
+                sheet.Cell(4, 5).Value = 0.2;
+                sheet.Cell(5, 1).Value = "VWO";
+                sheet.Cell(5, 5).Value = 0.12;
+                sheet.Cell(6, 1).Value = "Total Investment";
+                sheet.Cell("J1").Value = "bond allocation";
+                if (!blankBondCell) sheet.Cell("K1").Value = 0.064;
+                sheet.Cell("J2").Value = "cash + prop alloc";
+                sheet.Cell("K2").Value = 0.2;
+                sheet.Cell("J3").Value = "Actual Crypto Alloc";
+                sheet.Cell("J4").Value = 0;
+                sheet.Cell("J5").Value = "reit allocation";
+                if (reitAsFormula) sheet.Cell("K5").FormulaA1 = "(1-K6)*(IF(K7>0.05,0,0.05-K7))";
+                else sheet.Cell("K5").Value = 0.04;
+                sheet.Cell("J6").Value = "cash allocation";
+                sheet.Cell("K6").Value = 0;
+                sheet.Cell("J7").Value = "prop allocation";
+                sheet.Cell("K7").Value = 0.03;
+            }
 
             sheet.Cell("D6").Value = "crypto allocation";
             sheet.Cell("E6").Value = 0.1;
@@ -200,5 +224,45 @@ public class SpreadsheetImporterTests : IDisposable
         void Act() => Import(ticker, 0);
 
         Assert.Throws<InvalidOperationException>(Act);
+    }
+
+    [Fact]
+    public void ImportDerivesRatiosFromTheSheet()
+    {
+        var withRatios = true;
+
+        var portfolio = Import(withRatios: withRatios);
+
+        Assert.Equal(new AllocationRatios(0.6M, 0.625M, 0.08M, 0.07M), portfolio.Ratios);
+    }
+
+    [Fact]
+    public void ImportReadsRealEstateFloorFromFormulaWhenReitIsZero()
+    {
+        var reitAsFormula = true;
+
+        var portfolio = Import(withRatios: true, reitAsFormula: reitAsFormula);
+
+        Assert.Equal(0.05M, portfolio.Ratios!.MinimumRealEstate);
+    }
+
+    [Fact]
+    public void ImportFallsBackToDefaultRatiosWithWarnings()
+    {
+        var withRatios = false;
+
+        var portfolio = Import(withRatios: withRatios);
+
+        Assert.Equal((AllocationRatios.Default, 4), (portfolio.Ratios, portfolio.Warnings!.Count));
+    }
+
+    [Fact]
+    public void ImportFallsBackWhenARatioCellIsBlank()
+    {
+        var blankBondCell = true;
+
+        var portfolio = Import(withRatios: true, blankBondCell: blankBondCell);
+
+        Assert.Equal(AllocationRatios.Default.BondShare, portfolio.Ratios!.BondShare);
     }
 }

@@ -20,6 +20,13 @@ dotnet run --project src/ReBalanced.Cli -- "investment rebalance.xlsx" --crypto 
 | `--cash-target <dollars>` | Cash to keep uninvested | the sheet's `CASH` target |
 | `--band <fraction>` | How far an asset class may drift before the taxable account sells, e.g. `0.01` is 1 percentage point | `0.01` |
 | `--live-prices` | Price holdings with Twelve Data instead of the prices saved in the sheet | off |
+| `--us-share <f>` | US share of stocks | from the sheet (55%) |
+| `--developed-share <f>` | Developed share of international stocks; the rest is emerging | from the sheet (75%) |
+| `--bond-share <f>` | Bonds as a share of what is left after cash, real estate and crypto | from the sheet (6%) |
+| `--min-real-estate <f>` | Real estate floor, topped up with a REIT | from the sheet (5%) |
+| `--crypto-allocation <f>` | Crypto share; only used with crypto included | from the sheet (10%) |
+
+The report's second line shows the ratios in use.
 
 The output lists every account and whether it is traded or held, a bank transfer when `--cash include` finds money to invest, the trades per account as dollar amounts (Vanguard accepts dollar-based orders) with approximate share counts, and a table of target, current and resulting allocation per asset class.
 
@@ -32,6 +39,8 @@ The output lists every account and whether it is traded or held, a bank transfer
 - Real estate counts at its current value. If it is under 5% of the total, a REIT allocation tops it up to 5%.
 - Cash gets its dollar target. Crypto gets the crypto allocation (10%), split between bitcoin and ethereum by market cap, or nothing when crypto is ignored.
 - Bonds get 6% of what remains, and stocks get the rest: 55% US (`VTI`), then 75/25 developed (`VEA`) and emerging (`VWO`).
+
+These ratios are constants inside the sheet's formulas, not cells, so the importer works them back out from the calculated values: the US share from the `VTI`, `VEA` and `VWO` Target % cells, the bond share from "bond allocation", and the real estate floor from "reit allocation" (or from the number in its formula when real estate is above the floor and the cell is 0). Any ratio it cannot work out falls back to the value above with a warning, and every ratio can be overridden on the command line.
 
 Holdings are grouped into asset classes, so the 401(k)'s `TMBRX` counts as bonds, and `GBTC`, the `BTC` mini trust and wallet bitcoin all count as bitcoin.
 
@@ -80,6 +89,5 @@ Tests tagged `Category=Integration` call the live Twelve Data API. To run them, 
 
 - **No cost basis.** The sheet has no per-lot cost basis, so the tool cannot choose which lots to sell or harvest losses. Every taxable sell is treated as equally costly; check each lot before selling.
 - **The spreadsheet layout is assumed.** The importer finds cells by their labels (`Total Investment`, `crypto allocation`, `Market Cap`, `INCLUDE CRYPTO`, `INCLUDE BANKS`) and sections by their titles. Renaming them breaks the import.
-- **Allocation constants are in code.** The 55/45 US split, 75/25 international split, 6% bonds and 5% real estate floor are formula constants in the sheet and are copied into `AllocationTargets`.
 - **Saved portfolios lose their accounts.** LiteDB cannot rebuild `Portfolio.Accounts` or an account's holdings. The round-trip test is skipped until this is fixed.
 - **Overlapping equivalent targets in `RebalanceService`.** If both an asset and its equivalent are allocated (say `bitcoin` and `GBTC`), each target is applied to the same holding separately. `TaxAwareRebalancer` does not have this problem because it works on asset classes.

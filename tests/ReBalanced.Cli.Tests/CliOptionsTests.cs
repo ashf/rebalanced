@@ -115,4 +115,30 @@ public class CliOptionsTests
 
         Assert.Throws<ArgumentException>(Act);
     }
+
+    [Fact]
+    public void ParsesAllocationRatioOverrides()
+    {
+        var args = new[]
+        {
+            "sheet.xlsx", "--us-share", "0.6", "--developed-share", "0.7", "--bond-share", "0.1",
+            "--min-real-estate", "0.04", "--crypto-allocation", "0.05"
+        };
+
+        var options = CliOptions.Parse(args);
+
+        Assert.Equal((0.6M, 0.7M, 0.1M, 0.04M, 0.05M),
+            (options.UsShare, options.DevelopedShare, options.BondShare, options.MinimumRealEstate,
+                options.CryptoAllocation));
+    }
+
+    [Fact]
+    public void RatioAboveOneThrows()
+    {
+        var args = new[] {"sheet.xlsx", "--us-share", "1.5"};
+
+        void Act() => CliOptions.Parse(args);
+
+        Assert.Throws<ArgumentException>(Act);
+    }
 }

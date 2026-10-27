@@ -20,6 +20,9 @@ try
     var portfolio = SpreadsheetImporter.Import(options.Path);
     if (options.LivePrices) portfolio = await LivePrices.Apply(portfolio);
 
+    foreach (var warning in portfolio.Warnings ?? Array.Empty<string>()) Console.Error.WriteLine($"warning: {warning}");
+    if (options.CryptoAllocation is not null && !(options.IncludeCrypto ?? portfolio.IncludeCrypto))
+        Console.Error.WriteLine("warning: --crypto-allocation has no effect while crypto is ignored");
     var result = PlanBuilder.Build(portfolio, options);
     Report.Print(result);
     return 0;
@@ -98,6 +101,11 @@ static class Report
         var plan = result.Plan;
         Console.WriteLine($"Portfolio total {plan.Total:C} (crypto {(result.IncludeCrypto ? "included" : "held as is")}, " +
                           $"bank cash {(result.IncludeCash ? "included" : "ignored")})");
+        if (result.Settings is { Ratios: { } ratios } settings)
+            Console.WriteLine($"Allocation: US {ratios.UsShare:P1} of stocks, developed {ratios.DevelopedShareOfInternational:P1} " +
+                              $"of international, bonds {ratios.BondShare:P1}, real estate floor {ratios.MinimumRealEstate:P1}, " +
+                              $"crypto {(settings.IncludeCrypto ? settings.CryptoAllocation.ToString("P1") : "held as is")}, " +
+                              $"cash target {settings.CashTarget:C}");
         Console.WriteLine();
 
         foreach (var account in result.Accounts.Where(x => x.Value != 0))

@@ -9,7 +9,8 @@ public record PlanResult(
     decimal BankTransfer,
     bool IncludeCrypto,
     bool IncludeCash,
-    decimal BankCash = 0);
+    decimal BankCash = 0,
+    AllocationSettings? Settings = null);
 
 public static class PlanBuilder
 {
@@ -30,11 +31,18 @@ public static class PlanBuilder
             return account with {Positions = positions};
         }).ToList();
 
-        var settings = new AllocationSettings(portfolio.CryptoAllocation, portfolio.BitcoinMarketCap,
-            portfolio.EthereumMarketCap, options.CashTarget ?? portfolio.CashTarget, includeCrypto);
+        var sheetRatios = portfolio.Ratios ?? AllocationRatios.Default;
+        var ratios = new AllocationRatios(
+            options.UsShare ?? sheetRatios.UsShare,
+            options.DevelopedShare ?? sheetRatios.DevelopedShareOfInternational,
+            options.BondShare ?? sheetRatios.BondShare,
+            options.MinimumRealEstate ?? sheetRatios.MinimumRealEstate);
+        var settings = new AllocationSettings(options.CryptoAllocation ?? portfolio.CryptoAllocation,
+            portfolio.BitcoinMarketCap, portfolio.EthereumMarketCap, options.CashTarget ?? portfolio.CashTarget,
+            includeCrypto, ratios);
         var targets = AllocationTargets.Calculate(TaxAwareRebalancer.ValueByClass(accounts), settings);
 
         return new PlanResult(new TaxAwareRebalancer().Rebalance(accounts, targets, options.Band),
-            accounts, bankTransfer, includeCrypto, includeCash, portfolio.BankCash);
+            accounts, bankTransfer, includeCrypto, includeCash, portfolio.BankCash, settings);
     }
 }

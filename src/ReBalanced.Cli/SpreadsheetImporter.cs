@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using ReBalanced.Application.Services.TaxAware;
 using ReBalanced.Domain.Aggregates.PortfolioAggregate;
@@ -24,12 +26,14 @@ public record ImportedPortfolio(
     decimal EthereumMarketCap,
     decimal CashTarget,
     bool IncludeCrypto,
-    bool IncludeBanks);
+    bool IncludeBanks,
+    AllocationRatios? Ratios = null,
+    IReadOnlyList<string>? Warnings = null);
 
 // Reads the "investment rebalance" Google Sheet exported as .xlsx, using the values the sheet last calculated.
 public static class SpreadsheetImporter
 {
-    private const int Label = 1, Price = 2, Quantity = 4, Value = 6;
+    private const int Label = 1, Price = 2, Quantity = 4, TargetPercent = 5, Value = 6;
 
     public static ImportedPortfolio Import(string path)
     {
@@ -37,6 +41,7 @@ public static class SpreadsheetImporter
         var sheet = workbook.Worksheet(1);
 
         var marketCap = Find(sheet, "Market Cap");
+        var warnings = new List<string>();
         var sections = ReadSections(sheet, Find(sheet, "Total Investment").Address.RowNumber + 1);
 
         return new ImportedPortfolio(
@@ -47,7 +52,62 @@ public static class SpreadsheetImporter
             Number(sheet.Cell(marketCap.Address.RowNumber + 2, marketCap.Address.ColumnNumber + 1)),
             Number(sheet.Cell(FindInColumn(sheet, Label, "CASH").Address.RowNumber, 3)),
             Number(Find(sheet, "INCLUDE CRYPTO").CellRight()) != 0,
-            Number(Find(sheet, "INCLUDE BANKS").CellRight()) != 0);
+            Number(Find(sheet, "INCLUDE BANKS").CellRight()) != 0,
+            ReadRatios(sheet, warnings),
+            warnings);
+    }
+
+    // The ratios are constants inside the sheet's formulas, so they are worked back out from the calculated values.
+    private static AllocationRatios ReadRatios(IXLWorksheet sheet, List<string> warnings)
+    {
+        var fallback = AllocationRatios.Default;
+
+        decimal Derived(string name, decimal? value, decimal defaultValue)
+        {
+            if (value is >= 0 and <= 1) return Math.Round(value.Value, 6);
+            warnings.Add($"Could not read the {name} from the sheet; using {defaultValue:P2}");
+            return defaultValue;
+        }
+
+        decimal? Ratio(decimal numerator, decimal denominator) => denominator > 0 ? numerator / denominator : null;
+        decimal? Right(string label) => FindOrNull(sheet, label) is { } cell ? NumberOrNull(cell.CellRight()) : null;
+        decimal? Target(string ticker) => FindOrNull(sheet, ticker, Label) is { } cell
+            ? NumberOrNull(sheet.Cell(cell.Address.RowNumber, TargetPercent))
+            : null;
+
+        var (us, developed, emerging) = (Target("VTI"), Target("VEA"), Target("VWO"));
+        var cryptoInUse = FindOrNull(sheet, "Actual Crypto Alloc") is { } crypto ? NumberOrNull(crypto.CellBelow()) : 0;
+        var bonds = Right("bond allocation");
+        var cashAndProperty = Right("cash + prop alloc");
+
+        return new AllocationRatios(
+            Derived("US share of stocks", us is null || developed is null || emerging is null
+                ? null
+                : Ratio(us.Value, us.Value + developed.Value + emerging.Value), fallback.UsShare),
+            Derived("developed share of international", developed is null || emerging is null
+                ? null
+                : Ratio(developed.Value, developed.Value + emerging.Value), fallback.DevelopedShareOfInternational),
+            Derived("bond share", bonds is null || cashAndProperty is null || cryptoInUse is null
+                ? null
+                : Ratio(bonds.Value, 1 - cashAndProperty.Value - cryptoInUse.Value), fallback.BondShare),
+            Derived("real estate floor", MinimumRealEstate(sheet), fallback.MinimumRealEstate));
+    }
+
+    private static decimal? MinimumRealEstate(IXLWorksheet sheet)
+    {
+        var reitCell = FindOrNull(sheet, "reit allocation")?.CellRight();
+        if (reitCell is null) return null;
+
+        // reit = (1 - cash) * (floor - real estate) while real estate is under the floor
+        var reit = NumberOrNull(reitCell);
+        var cash = FindOrNull(sheet, "cash allocation") is { } c ? NumberOrNull(c.CellRight()) : null;
+        var realEstate = FindOrNull(sheet, "prop allocation") is { } p ? NumberOrNull(p.CellRight()) : null;
+        if (reit > 0)
+            return cash < 1 && realEstate is not null ? reit / (1 - cash) + realEstate : null;
+
+        // with real estate above the floor the reit cell is 0, so read the floor from its formula, e.g. IF(C14>0.05, ...)
+        var match = Regex.Match(reitCell.FormulaA1, @">\s*([0-9]*\.?[0-9]+)");
+        return match.Success ? decimal.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : null;
     }
 
     private static List<ImportedSection> ReadSections(IXLWorksheet sheet, int startRow)
@@ -146,6 +206,12 @@ public static class SpreadsheetImporter
                ?? throw new InvalidOperationException($"Cell \"{text}\" not found in the spreadsheet");
     }
 
+    private static IXLCell? FindOrNull(IXLWorksheet sheet, string text, int? column = null)
+    {
+        var cells = column is null ? sheet.CellsUsed() : sheet.Column(column.Value).CellsUsed();
+        return cells.FirstOrDefault(x => Text(x).Equals(text, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static IXLCell FindInColumn(IXLWorksheet sheet, int column, string text)
     {
         return sheet.Column(column).CellsUsed().FirstOrDefault(x => Text(x) == text)
@@ -162,6 +228,12 @@ public static class SpreadsheetImporter
     {
         var value = Read(cell);
         return value.IsText ? value.GetText().Trim() : "";
+    }
+
+    private static decimal? NumberOrNull(IXLCell cell)
+    {
+        var value = Read(cell);
+        return value.IsNumber ? (decimal) value.GetNumber() : null;
     }
 
     private static decimal Number(IXLCell cell)

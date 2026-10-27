@@ -82,4 +82,32 @@ public class AllocationTargetsTests
 
         Assert.IsType<System.InvalidOperationException>(exception);
     }
+
+    [Fact]
+    public void UsesCustomRatios()
+    {
+        var values = new Dictionary<AssetClass, decimal> {[AssetClass.UsStocks] = 1000M};
+        var settings = new AllocationSettings(0M, 0M, 0M, 0M, false, new AllocationRatios(0.5M, 0.5M, 0.2M, 0M));
+
+        var targets = AllocationTargets.Calculate(values, settings);
+
+        Assert.Equal((400M, 200M, 200M, 200M),
+            (targets[AssetClass.UsStocks], targets[AssetClass.DevelopedStocks], targets[AssetClass.EmergingStocks],
+                targets[AssetClass.Bonds]));
+    }
+
+    [Fact]
+    public void ThrowsWhenAllocationsExceedTheWholePortfolio()
+    {
+        var values = new Dictionary<AssetClass, decimal>
+        {
+            [AssetClass.UsStocks] = 900M,
+            [AssetClass.RealEstate] = 100M
+        };
+        var settings = new AllocationSettings(1M, 3M, 1M, 0M, true);
+
+        var exception = Record.Exception(() => AllocationTargets.Calculate(values, settings));
+
+        Assert.IsType<System.InvalidOperationException>(exception);
+    }
 }

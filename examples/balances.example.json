@@ -1,0 +1,59 @@
+{
+  // Every number here is made up. Copy this file, fill in your own balances, and run:
+  //   dotnet run --project src/ReBalanced.Cli -- my-balances.json
+  // Command-line options (--crypto, --cash, --us-share, ...) override "settings".
+  "settings": {
+    "includeCrypto": false,
+    "includeBanks": false,
+    "cashTarget": 0,
+    "cryptoAllocation": 0.1,
+    "bitcoinMarketCap": 1800000000000,
+    "ethereumMarketCap": 370000000000,
+    "ratios": { "usShare": 0.55, "developedShare": 0.75, "bondShare": 0.06, "minimumRealEstate": 0.05 }
+  },
+  "accounts": [
+    {
+      "name": "Taxable",
+      "kind": "taxable",
+      "holdings": [
+        { "ticker": "VTI", "shares": 500, "price": 300 },
+        { "ticker": "VEA", "shares": 1500, "price": 50 },
+        { "ticker": "VWO", "shares": 500, "price": 45 },
+        { "ticker": "CASH", "value": 2500 }
+      ]
+    },
+    {
+      "name": "Roth IRA",
+      "kind": "rothIra",
+      "holdings": [
+        { "ticker": "VTI", "shares": 150, "price": 300 },
+        { "ticker": "BND", "shares": 400, "price": 72 },
+        { "ticker": "BTC", "shares": 300, "price": 35 },
+        { "ticker": "CASH", "value": 100 }
+      ]
+    },
+    {
+      "name": "401(k)",
+      "kind": "retirement401k",
+      "holdings": [{ "ticker": "TMBRX", "shares": 2000, "price": 8 }]
+    },
+    {
+      "name": "Banks",
+      "kind": "banks",
+      "holdings": [
+        { "name": "Checking", "value": 5000 },
+        { "name": "Credit card", "value": -1200 }
+      ]
+    },
+    {
+      "name": "Bitcoin",
+      "kind": "wallet",
+      "holdings": [{ "ticker": "bitcoin", "shares": 0.1, "price": 80000 }]
+    },
+    {
+      "name": "Rental property",
+      "kind": "realEstate",
+      "holdings": [{ "name": "Duplex", "value": 40000 }]
+    }
+  ]
+}

@@ -6,30 +6,6 @@ using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 namespace ReBalanced.Cli;
 
-public enum SectionKind
-{
-    Taxable,
-    RothIra,
-    Retirement401K,
-    Banks,
-    Wallet,
-    RealEstate
-}
-
-public record ImportedSection(string Title, SectionKind Kind, HoldingAccount Account);
-
-public record ImportedPortfolio(
-    IReadOnlyList<ImportedSection> Sections,
-    decimal BankCash,
-    decimal CryptoAllocation,
-    decimal BitcoinMarketCap,
-    decimal EthereumMarketCap,
-    decimal CashTarget,
-    bool IncludeCrypto,
-    bool IncludeBanks,
-    AllocationRatios? Ratios = null,
-    IReadOnlyList<string>? Warnings = null);
-
 // Reads the "investment rebalance" Google Sheet exported as .xlsx, using the values the sheet last calculated.
 public static class SpreadsheetImporter
 {
@@ -130,9 +106,8 @@ public static class SpreadsheetImporter
             }
 
             var name = kind == SectionKind.Taxable ? "Taxable" : title;
-            var tradable = kind is SectionKind.Taxable or SectionKind.RothIra;
             sections.Add(new ImportedSection(title, kind,
-                new HoldingAccount(name, AccountTypeOf(kind), tradable, positions)));
+                new HoldingAccount(name, kind.ToAccountType(), kind.IsTradable(), positions)));
         }
 
         return sections;
@@ -189,16 +164,6 @@ public static class SpreadsheetImporter
         return SectionKind.RealEstate;
     }
 
-    private static AccountType AccountTypeOf(SectionKind kind)
-    {
-        return kind switch
-        {
-            SectionKind.Taxable or SectionKind.Banks => AccountType.Taxable,
-            SectionKind.RothIra or SectionKind.Retirement401K => AccountType.Roth,
-            SectionKind.Wallet => AccountType.CryptoWallet,
-            _ => AccountType.Property
-        };
-    }
 
     private static IXLCell Find(IXLWorksheet sheet, string text)
     {

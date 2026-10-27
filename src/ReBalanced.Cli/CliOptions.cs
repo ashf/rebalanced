@@ -16,7 +16,9 @@ public record CliOptions(
     decimal? CryptoAllocation = null)
 {
     public const string Usage = """
-        Usage: rebalanced <spreadsheet.xlsx> [options]
+        Usage: rebalanced <spreadsheet.xlsx | balances.json> [options]
+
+        A .json file holds current balances directly; see examples/balances.example.json.
 
           --crypto include|ignore   rebalance crypto, or hold it as is (default: the sheet's INCLUDE CRYPTO)
           --cash include|ignore     invest bank balances, or leave them out (default: the sheet's INCLUDE BANKS)
@@ -58,11 +60,11 @@ public record CliOptions(
                 case "--min-real-estate": minimumRealEstate = Fraction(Next()); break;
                 case "--crypto-allocation": cryptoAllocation = Fraction(Next()); break;
                 case var option when option.StartsWith('-'): throw new ArgumentException($"Unknown option {option}");
-                default: path = path is null ? args[i] : throw new ArgumentException("Only one spreadsheet path"); break;
+                default: path = path is null ? args[i] : throw new ArgumentException("Only one spreadsheet or balances file"); break;
             }
         }
 
-        return new CliOptions(path ?? throw new ArgumentException("Missing spreadsheet path"),
+        return new CliOptions(path ?? throw new ArgumentException("Missing spreadsheet or balances file path"),
             includeCrypto, includeCash, cashTarget, band, livePrices,
             usShare, developedShare, bondShare, minimumRealEstate, cryptoAllocation);
     }

@@ -13,6 +13,22 @@ dotnet run --project src/ReBalanced.Cli -- "investment rebalance.xlsx"
 dotnet run --project src/ReBalanced.Cli -- "investment rebalance.xlsx" --crypto include --cash include
 ```
 
+### Balances as JSON
+
+Instead of the spreadsheet, you can pass a `.json` file with your current balances; see [`examples/balances.example.json`](examples/balances.example.json):
+
+```bash
+dotnet run --project src/ReBalanced.Cli -- my-balances.json --crypto ignore --cash ignore
+```
+
+- `accounts`: each has a `name`, a `kind` and `holdings`. `taxable` and `rothIra` accounts are traded; `retirement401k`, `wallet` and `realEstate` accounts are held as is but counted; `banks` lines are summed into one cash balance.
+- `holdings`: a security is `ticker`, `shares` and `price` (wallet coins use the tickers `bitcoin` and `ethereum`). Cash, bank and property lines are a `value`, with an optional `name`.
+- `settings` (optional) replaces what the spreadsheet provides: `includeCrypto`, `includeBanks`, `cashTarget`, `cryptoAllocation`, `bitcoinMarketCap`, `ethereumMarketCap` and `ratios` (`usShare`, `developedShare`, `bondShare`, `minimumRealEstate`). Anything left out defaults to crypto and banks ignored, no cash target, 10% crypto, and ratios of 55% US, 75% developed, 6% bonds and a 5% real estate floor. Including crypto needs both market caps. Command-line options override the file.
+
+Keep your real balances file out of the repository.
+
+### Options
+
 | Option | Effect | Default |
 |---|---|---|
 | `--crypto include\|ignore` | Rebalance crypto, or hold it as is and leave it out of the total | the sheet's `INCLUDE CRYPTO` |
@@ -69,7 +85,7 @@ The repository also has an ASP.NET Core API and the original share-based solver,
 
 | Project | Contents |
 |---|---|
-| `src/ReBalanced.Cli` | The command-line tool: spreadsheet import, options, report |
+| `src/ReBalanced.Cli` | The command-line tool: spreadsheet and JSON import, options, report |
 | `src/ReBalanced.Domain` | `Portfolio`, `Account`, `Holding`, `Asset`, `AssetClass`, `TaxEfficientPlacement`, `AccountRules` |
 | `src/ReBalanced.Application` | `TaxAwareRebalancer`, `AllocationTargets`, `RebalanceService` and supporting services |
 | `src/ReBalanced.Infrastructure` | Twelve Data price client, LiteDB price cache and portfolio repository |

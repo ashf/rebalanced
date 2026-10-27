@@ -26,4 +26,10 @@
         <ProjectReference Include="..\..\src\ReBalanced.Cli\ReBalanced.Cli.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="..\..\examples\balances.example.json" Link="balances.example.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
 </Project>

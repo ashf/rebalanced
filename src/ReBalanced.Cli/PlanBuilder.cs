@@ -10,7 +10,8 @@ public record PlanResult(
     bool IncludeCrypto,
     bool IncludeCash,
     decimal BankCash = 0,
-    AllocationSettings? Settings = null);
+    AllocationSettings? Settings = null,
+    string? TransferAccount = null);
 
 public static class PlanBuilder
 {
@@ -18,7 +19,9 @@ public static class PlanBuilder
     {
         var includeCrypto = options.IncludeCrypto ?? portfolio.IncludeCrypto;
         var includeCash = options.IncludeCash ?? portfolio.IncludeBanks;
-        var bankTransfer = includeCash ? Math.Max(0, portfolio.BankCash) : 0;
+        // bank cash moves into the (first) taxable account, whatever it is named
+        var transferTo = portfolio.Sections.FirstOrDefault(x => x.Kind == SectionKind.Taxable)?.Account;
+        var bankTransfer = includeCash && transferTo is not null ? Math.Max(0, portfolio.BankCash) : 0;
 
         var accounts = portfolio.Sections.Select(x => x.Account).Select(account =>
         {
@@ -26,7 +29,7 @@ public static class PlanBuilder
             var positions = account.Positions
                 .Where(x => includeCrypto || x.AssetClass is not (AssetClass.Bitcoin or AssetClass.Ethereum))
                 .ToList();
-            if (bankTransfer > 0 && account.Name == "Taxable")
+            if (bankTransfer > 0 && ReferenceEquals(account, transferTo))
                 positions.Add(new Position("CASH", AssetClass.Cash, bankTransfer, 1));
             return account with {Positions = positions};
         }).ToList();
@@ -43,6 +46,6 @@ public static class PlanBuilder
         var targets = AllocationTargets.Calculate(TaxAwareRebalancer.ValueByClass(accounts), settings);
 
         return new PlanResult(new TaxAwareRebalancer().Rebalance(accounts, targets, options.Band),
-            accounts, bankTransfer, includeCrypto, includeCash, portfolio.BankCash, settings);
+            accounts, bankTransfer, includeCrypto, includeCash, portfolio.BankCash, settings, transferTo?.Name);
     }
 }

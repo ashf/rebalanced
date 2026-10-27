@@ -17,7 +17,9 @@ if (args.Length == 0 || args.Contains("--help") || args.Contains("-h"))
 try
 {
     var options = CliOptions.Parse(args);
-    var portfolio = SpreadsheetImporter.Import(options.Path);
+    var portfolio = Path.GetExtension(options.Path).Equals(".json", StringComparison.OrdinalIgnoreCase)
+        ? JsonImporter.Import(options.Path)
+        : SpreadsheetImporter.Import(options.Path);
     if (options.LivePrices) portfolio = await LivePrices.Apply(portfolio);
 
     foreach (var warning in portfolio.Warnings ?? Array.Empty<string>()) Console.Error.WriteLine($"warning: {warning}");
@@ -116,7 +118,7 @@ static class Report
             Console.WriteLine($"Bank balances net to {result.BankCash:C} (cards exceed cash), so nothing is transferred.\n");
 
         if (result.BankTransfer > 0)
-            Console.WriteLine($"1. Transfer {result.BankTransfer:C} (net of card balances) from your banks into Taxable.\n");
+            Console.WriteLine($"1. Transfer {result.BankTransfer:C} (net of card balances) from your banks into {result.TransferAccount}.\n");
 
         if (plan.Trades.Count == 0) Console.WriteLine("No trades needed: every asset class is within its band.");
 
@@ -136,7 +138,8 @@ static class Report
 
         foreach (var warning in plan.Warnings) Console.WriteLine($"\nwarning: {warning}");
 
-        if (plan.Trades.Any(x => x.Account == "Taxable" && x.Amount < 0))
+        var taxable = result.Accounts.Where(x => x.AccountType == AccountType.Taxable).Select(x => x.Name).ToHashSet();
+        if (plan.Trades.Any(x => taxable.Contains(x.Account) && x.Amount < 0))
             Console.WriteLine("\nTaxable sells realize capital gains or losses. Check each lot's cost basis before selling.");
     }
 

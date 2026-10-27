@@ -3,8 +3,9 @@ using ReBalanced.Domain.Aggregates.PortfolioAggregate;
 
 namespace ReBalanced.Application.Services.TaxAware;
 
-// Dollar-based rebalancing across accounts as a linear program. Drift beyond the band is fixed first, drift inside it
-// is fixed only where that is cheap (cash and tax-advantaged trades), and selling in a taxable account costs the most.
+// Dollar-based rebalancing across accounts as a linear program. Each class may only be held in its tax-efficient
+// homes (TaxEfficientPlacement), even if that takes a taxable sale. Drift beyond the band is fixed first, drift inside
+// it only where that is cheap (cash and tax-advantaged trades), and selling in a taxable account costs the most.
 public class TaxAwareRebalancer
 {
     private const double OutsideBandPenalty = 1000;
@@ -29,6 +30,18 @@ public class TaxAwareRebalancer
         var variablesByClass = new Dictionary<AssetClass, List<Variable>>();
         var holdings = new List<(HoldingAccount Account, string Ticker, AssetClass AssetClass, decimal Current, Variable Final)>();
 
+        var warnings = new List<string>();
+        var targeted = targets.Where(x => x.Key != AssetClass.RealEstate && x.Value > 0).Select(x => x.Key).ToList();
+        var tradable = accounts.Where(x => x.Tradable).ToList();
+        // a class whose home account type is missing from the portfolio may go in any traded account
+        var homeless = targeted.Where(x => !tradable.Any(a => TaxEfficientPlacement.Homes(x).Contains(a.AccountType)))
+            .ToHashSet();
+        foreach (var assetClass in homeless)
+            warnings.Add($"No traded account is a tax-efficient home for {assetClass}, so any account may hold it");
+
+        bool Allowed(HoldingAccount account, AssetClass assetClass) =>
+            homeless.Contains(assetClass) || TaxEfficientPlacement.Homes(assetClass).Contains(account.AccountType);
+
         foreach (var account in accounts)
         {
             if (!account.Tradable)
@@ -41,19 +54,19 @@ public class TaxAwareRebalancer
 
             var current = account.Positions.GroupBy(x => x.Ticker)
                 .ToDictionary(x => x.Key, x => (x.First().AssetClass, Value: x.Sum(p => p.Value)));
-            foreach (var assetClass in targets.Keys.Where(x => x != AssetClass.RealEstate && targets[x] > 0))
+            foreach (var assetClass in targeted.Union(new[] {AssetClass.Cash}).Where(x => Allowed(account, x)))
             {
                 var ticker = AssetClasses.PreferredTicker(assetClass);
                 if (ticker is not null) current.TryAdd(ticker, (assetClass, 0M));
             }
 
-            var priority = ClassesOf(AccountRules.PriorityAssets(account.AccountType));
-            var undesired = ClassesOf(AccountRules.UndesiredAssets(account.AccountType));
             var accountTotal = solver.MakeConstraint((double) account.Value, (double) account.Value);
 
             foreach (var (ticker, (assetClass, value)) in current)
             {
-                var final = solver.MakeNumVar(0, double.PositiveInfinity, $"{account.Name}:{ticker}");
+                // a holding outside its homes must be sold
+                var final = solver.MakeNumVar(0, Allowed(account, assetClass) ? double.PositiveInfinity : 0,
+                    $"{account.Name}:{ticker}");
                 var buy = solver.MakeNumVar(0, double.PositiveInfinity, "");
                 var sell = solver.MakeNumVar(0, double.PositiveInfinity, "");
                 var balance = solver.MakeConstraint((double) value, (double) value);
@@ -70,9 +83,9 @@ public class TaxAwareRebalancer
                     objective.SetCoefficient(sell,
                         TurnoverPenalty + (account.AccountType == AccountType.Taxable ? TaxableSellPenalty : 0));
                 }
-                objective.SetCoefficient(final,
-                    priority.Contains(assetClass) ? -LocationWeight :
-                    undesired.Contains(assetClass) ? LocationWeight : 0);
+                // within its allowed homes, a class leans to the first one (e.g. cash in taxable rather than the Roth)
+                var homes = TaxEfficientPlacement.Homes(assetClass);
+                objective.SetCoefficient(final, homes.Count > 1 && homes[0] != account.AccountType ? LocationWeight : 0);
 
                 if (!variablesByClass.TryGetValue(assetClass, out var classVariables))
                     variablesByClass[assetClass] = classVariables = new List<Variable>();
@@ -118,7 +131,15 @@ public class TaxAwareRebalancer
             after[holding.AssetClass] =
                 after.GetValueOrDefault(holding.AssetClass) + (decimal) holding.Final.SolutionValue();
 
-        return new RebalancePlan(trades, ValueByClass(accounts), after, targets, total);
+        foreach (var (assetClass, target) in targets)
+        {
+            var miss = after.GetValueOrDefault(assetClass) - target;
+            if (Math.Abs(miss) > Math.Max(band * total, 1))
+                warnings.Add($"{assetClass} ends {Math.Abs(miss):C} {(miss > 0 ? "over" : "under")} its target: " +
+                             "held accounts and placement rules leave no trade that closes the gap");
+        }
+
+        return new RebalancePlan(trades, ValueByClass(accounts), after, targets, total, warnings);
     }
 
     public static Dictionary<AssetClass, decimal> ValueByClass(IEnumerable<HoldingAccount> accounts)
@@ -126,10 +147,5 @@ public class TaxAwareRebalancer
         return accounts.SelectMany(x => x.Positions)
             .GroupBy(x => x.AssetClass)
             .ToDictionary(x => x.Key, x => x.Sum(p => p.Value));
-    }
-
-    private static HashSet<AssetClass> ClassesOf(IEnumerable<string> tickers)
-    {
-        return tickers.Select(AssetClasses.Of).OfType<AssetClass>().ToHashSet();
     }
 }

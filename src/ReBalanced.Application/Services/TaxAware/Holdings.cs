@@ -23,4 +23,5 @@ public record RebalancePlan(
     IReadOnlyDictionary<AssetClass, decimal> Before,
     IReadOnlyDictionary<AssetClass, decimal> After,
     IReadOnlyDictionary<AssetClass, decimal> Targets,
-    decimal Total);
+    decimal Total,
+    IReadOnlyList<string> Warnings);

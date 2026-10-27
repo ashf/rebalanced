@@ -21,7 +21,7 @@ public record CliOptions(
           --crypto include|ignore   rebalance crypto, or hold it as is (default: the sheet's INCLUDE CRYPTO)
           --cash include|ignore     invest bank balances, or leave them out (default: the sheet's INCLUDE BANKS)
           --cash-target <dollars>   cash to keep uninvested (default: the sheet's CASH target)
-          --band <fraction>         drift allowed before taxable sells, e.g. 0.01 = 1 point (default: 0.01)
+          --band <fraction>         drift allowed before taxable sells, e.g. 0.01 = 1 point (default: 0, exact targets)
           --live-prices             price holdings with Twelve Data instead of the sheet's saved prices
 
         Allocation ratios (fractions; default: worked out from the sheet's Target % formulas):
@@ -37,7 +37,7 @@ public record CliOptions(
         string? path = null;
         bool? includeCrypto = null, includeCash = null;
         decimal? cashTarget = null;
-        var band = 0.01M;
+        var band = 0M;
         var livePrices = false;
         decimal? usShare = null, developedShare = null, bondShare = null, minimumRealEstate = null, cryptoAllocation = null;
 

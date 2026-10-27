@@ -9,7 +9,7 @@ public class CliOptionsTests
 
         var options = CliOptions.Parse(args);
 
-        Assert.Equal(new CliOptions("plan.xlsx", null, null, null, 0.01M, false), options);
+        Assert.Equal(new CliOptions("plan.xlsx", null, null, null, 0M, false), options);
     }
 
     [Theory]

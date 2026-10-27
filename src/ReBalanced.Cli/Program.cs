@@ -134,6 +134,8 @@ static class Report
             Console.WriteLine($"{Names[assetClass],-16} {Percent(plan.Targets, assetClass, plan.Total),8} " +
                               $"{Percent(plan.Before, assetClass, plan.Total),8} {Percent(plan.After, assetClass, plan.Total),8}");
 
+        foreach (var warning in plan.Warnings) Console.WriteLine($"\nwarning: {warning}");
+
         if (plan.Trades.Any(x => x.Account == "Taxable" && x.Amount < 0))
             Console.WriteLine("\nTaxable sells realize capital gains or losses. Check each lot's cost basis before selling.");
     }

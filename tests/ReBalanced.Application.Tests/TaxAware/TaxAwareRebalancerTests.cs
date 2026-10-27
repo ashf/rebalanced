@@ -44,17 +44,14 @@ public class TaxAwareRebalancerTests
     {
         var accounts = new[]
         {
-            Taxable(Holding("VTI", 600M), Holding("VEA", 400M)),
+            Taxable(Holding("VTI", 1000M)),
             Roth(Holding("VTI", 500M), Holding("BND", 500M))
         };
-        var targets = new Dictionary<AssetClass, decimal>
-        {
-            [AssetClass.UsStocks] = 1050M, [AssetClass.DevelopedStocks] = 450M, [AssetClass.Bonds] = 500M
-        };
+        var targets = new Dictionary<AssetClass, decimal> {[AssetClass.UsStocks] = 1550M, [AssetClass.Bonds] = 450M};
 
         var plan = new TaxAwareRebalancer().Rebalance(accounts, targets, 0.05M);
 
-        Assert.Equal(new List<(string, string, decimal)> {("Roth IRA", "VEA", 50M), ("Roth IRA", "VTI", -50M)},
+        Assert.Equal(new List<(string, string, decimal)> {("Roth IRA", "BND", -50M), ("Roth IRA", "VTI", 50M)},
             Trades(plan));
     }
 
@@ -112,5 +109,75 @@ public class TaxAwareRebalancerTests
 
         Assert.Equal(new List<(string, string, decimal)> {("Roth IRA", "BND", 100M), ("Taxable", "VTI", 100M)},
             Trades(plan));
+    }
+
+    [Fact]
+    public void PlacesInternationalInTaxableAndBondsInRoth()
+    {
+        var accounts = new[]
+        {
+            Taxable(Holding("VTI", 600M), Holding("VEA", 300M), Holding("CASH", 100M)),
+            Roth(Holding("VTI", 200M), Holding("BND", 300M))
+        };
+        var targets = new Dictionary<AssetClass, decimal>
+        {
+            [AssetClass.UsStocks] = 800M, [AssetClass.DevelopedStocks] = 500M, [AssetClass.Bonds] = 200M,
+            [AssetClass.Cash] = 0M
+        };
+
+        var plan = new TaxAwareRebalancer().Rebalance(accounts, targets, 0M);
+
+        Assert.Equal(new List<(string, string, decimal)>
+        {
+            ("Roth IRA", "BND", -100M), ("Roth IRA", "VTI", 100M), ("Taxable", "VEA", 200M), ("Taxable", "VTI", -100M)
+        }, Trades(plan));
+    }
+
+    [Fact]
+    public void SellsAHoldingOutsideItsTaxEfficientHome()
+    {
+        var accounts = new[]
+        {
+            Taxable(Holding("VTI", 900M), Holding("BND", 100M)),
+            Roth(Holding("VTI", 1000M))
+        };
+        var targets = new Dictionary<AssetClass, decimal> {[AssetClass.UsStocks] = 1900M, [AssetClass.Bonds] = 100M};
+
+        var plan = new TaxAwareRebalancer().Rebalance(accounts, targets, 0M);
+
+        Assert.Equal(new List<(string, string, decimal)>
+        {
+            ("Roth IRA", "BND", 100M), ("Roth IRA", "VTI", -100M), ("Taxable", "BND", -100M), ("Taxable", "VTI", 100M)
+        }, Trades(plan));
+    }
+
+    [Fact]
+    public void WarnsWhenATargetCannotBeReached()
+    {
+        var accounts = new[]
+        {
+            new HoldingAccount("401(k)", AccountType.Roth, false, new[] {Holding("TMBRX", 600M)}),
+            Roth(Holding("VTI", 400M))
+        };
+        var targets = new Dictionary<AssetClass, decimal> {[AssetClass.UsStocks] = 500M, [AssetClass.Bonds] = 500M};
+
+        var plan = new TaxAwareRebalancer().Rebalance(accounts, targets, 0M);
+
+        Assert.Equal(2, plan.Warnings.Count);
+    }
+
+    [Fact]
+    public void WarnsWhenAClassHasNoTaxEfficientHome()
+    {
+        var accounts = new[] {Taxable(Holding("VTI", 900M), Holding("CASH", 100M))};
+        var targets = new Dictionary<AssetClass, decimal>
+        {
+            [AssetClass.UsStocks] = 900M, [AssetClass.Bonds] = 100M, [AssetClass.Cash] = 0M
+        };
+
+        var plan = new TaxAwareRebalancer().Rebalance(accounts, targets, 0M);
+
+        Assert.Equal(new List<(string, string, decimal)> {("Taxable", "BND", 100M)}, Trades(plan));
+        Assert.Single(plan.Warnings);
     }
 }

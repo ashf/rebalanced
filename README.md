@@ -18,7 +18,7 @@ dotnet run --project src/ReBalanced.Cli -- "investment rebalance.xlsx" --crypto 
 | `--crypto include\|ignore` | Rebalance crypto, or hold it as is and leave it out of the total | the sheet's `INCLUDE CRYPTO` |
 | `--cash include\|ignore` | Count bank balances (net of credit cards) as cash to invest, or leave them out | the sheet's `INCLUDE BANKS` |
 | `--cash-target <dollars>` | Cash to keep uninvested | the sheet's `CASH` target |
-| `--band <fraction>` | How far an asset class may drift before the taxable account sells, e.g. `0.01` is 1 percentage point | `0.01` |
+| `--band <fraction>` | How far an asset class may drift before the taxable account sells, e.g. `0.01` is 1 percentage point | `0` (exact targets, like the sheet) |
 | `--live-prices` | Price holdings with Twelve Data instead of the prices saved in the sheet | off |
 | `--us-share <f>` | US share of stocks | from the sheet (55%) |
 | `--developed-share <f>` | Developed share of international stocks; the rest is emerging | from the sheet (75%) |
@@ -44,21 +44,33 @@ These ratios are constants inside the sheet's formulas, not cells, so the import
 
 Holdings are grouped into asset classes, so the 401(k)'s `TMBRX` counts as bonds, and `GBTC`, the `BTC` mini trust and wallet bitcoin all count as bitcoin.
 
-**Trades.** `TaxAwareRebalancer` is a linear program in dollars, solved with [Google OR-Tools](https://developers.google.com/optimization) (GLOP). For each traded account it chooses the final dollar amount of every ticker the account holds, plus the preferred ticker of every targeted class. Each account's total stays the same. The objective, cheapest first:
+**Placement.** Each asset class may only be held in its tax-efficient home, following the Bogleheads [tax-efficient fund placement](https://www.bogleheads.org/wiki/Tax-efficient_fund_placement) guidance (`TaxEfficientPlacement`):
 
-1. Drift beyond the band is fixed almost at any cost.
-2. Selling in the taxable account costs more than drift inside the band is worth, so inside the band it rebalances only with cash and Roth trades.
-3. Asset location: each account type's priority assets get a small bonus and its undesired assets a small penalty (for example bonds and crypto in the Roth, international funds in the taxable account, cash out of the Roth). These rules live in `AccountRules`.
+| Asset class | Home | Why |
+|---|---|---|
+| Bonds, REIT | Roth | Least tax-efficient: interest and REIT dividends are taxed as ordinary income |
+| Bitcoin, Ethereum | Roth | Not covered by Bogleheads; held in the Roth for its expected growth |
+| Developed and emerging stocks | Taxable | The foreign tax credit only works in a taxable account |
+| US stocks | Either | Tax-efficient; fills whatever space is left |
+| Cash | Either, leaning taxable | Keeps the Roth invested |
+
+Placement wins over avoiding taxable sales: a holding outside its home is sold, and keeping international in the taxable account can mean selling taxable `VTI`. If a home account type is missing from the portfolio, that class may go in any traded account, with a warning.
+
+**Trades.** `TaxAwareRebalancer` is a linear program in dollars, solved with [Google OR-Tools](https://developers.google.com/optimization) (GLOP). For each traded account it chooses the final dollar amount of every ticker it holds, plus each allowed class's preferred ticker. Each account's total stays the same. The objective, cheapest first:
+
+1. Drift beyond the band is fixed almost at any cost. With the default band of 0 that means every class lands on its target.
+2. Selling in the taxable account costs more than drift inside the band is worth, so with a band above 0 it rebalances inside the band only with cash and Roth trades. Apart from sales that placement forces, it never sells in the taxable account when a Roth trade can do the same job.
+3. Cash and US stocks, which have two homes, lean to the first one listed above.
 4. New money goes to each class's preferred, lower-fee ticker (`BTC` over `GBTC`, `ETH` over `ETHE`).
 
 ## Other components
 
-The repository also has an ASP.NET Core API and the original share-based solver, `RebalanceService`. It solves for whole or fractional share counts with OR-Tools' SCIP solver, widening a tolerance band until the targets fit, and uses `AccountRules` for asset location too. It prices assets through Twelve Data with a one-hour LiteDB cache. The API has no controllers yet.
+The repository also has an ASP.NET Core API and the original share-based solver, `RebalanceService`. It solves for whole or fractional share counts with OR-Tools' SCIP solver, widening a tolerance band until the targets fit, and uses the ticker lists in `AccountRules` for asset location. It prices assets through Twelve Data with a one-hour LiteDB cache. The API has no controllers yet.
 
 | Project | Contents |
 |---|---|
 | `src/ReBalanced.Cli` | The command-line tool: spreadsheet import, options, report |
-| `src/ReBalanced.Domain` | `Portfolio`, `Account`, `Holding`, `Asset`, `AssetClass`, `AccountRules` |
+| `src/ReBalanced.Domain` | `Portfolio`, `Account`, `Holding`, `Asset`, `AssetClass`, `TaxEfficientPlacement`, `AccountRules` |
 | `src/ReBalanced.Application` | `TaxAwareRebalancer`, `AllocationTargets`, `RebalanceService` and supporting services |
 | `src/ReBalanced.Infrastructure` | Twelve Data price client, LiteDB price cache and portfolio repository |
 | `src/ReBalanced.API` | ASP.NET Core host: dependency wiring, Swagger, logging |

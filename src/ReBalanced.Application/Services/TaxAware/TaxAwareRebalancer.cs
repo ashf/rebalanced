@@ -119,7 +119,7 @@ public class TaxAwareRebalancer
         var trades = holdings
             .Where(x => x.AssetClass != AssetClass.Cash)
             .Select(x => new Trade(x.Account.Name, x.Ticker,
-                Math.Round((decimal) x.Final.SolutionValue() - x.Current, 2), prices.GetValueOrDefault(x.Ticker)))
+                ToCents((decimal) x.Final.SolutionValue() - x.Current), prices.GetValueOrDefault(x.Ticker)))
             .Where(x => Math.Abs(x.Amount) >= 0.01M)
             .ToList();
 
@@ -144,5 +144,14 @@ public class TaxAwareRebalancer
         return accounts.SelectMany(x => x.Positions)
             .GroupBy(x => x.AssetClass)
             .ToDictionary(x => x.Key, x => x.Sum(p => p.Value));
+    }
+
+    // buys round down and sells round up, so the orders never spend more cash than the account has; the small
+    // allowance keeps solver noise (99.9999999) from rounding a whole amount down a cent
+    private static decimal ToCents(decimal amount)
+    {
+        return amount >= 0
+            ? Math.Floor(amount * 100 + 0.0001M) / 100
+            : -Math.Ceiling(-amount * 100 - 0.0001M) / 100;
     }
 }

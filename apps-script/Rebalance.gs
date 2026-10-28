@@ -1,3 +1,4 @@
+/** @OnlyCurrentDoc */
 /**
  * Tax-aware rebalancing for the "investment rebalance" Google Sheet.
  *
@@ -38,6 +39,14 @@ function calculateNewOrders() {
   const range = sheet.getDataRange();
   const result = planFromGrid(range.getValues(), () => LinearOptimizationService.createEngine(), range.getFormulas());
   writeOrders(sheet, result.layout.newOrderColumn, result.clearRows, result.orders);
+
+  // the sheet's own formulas (fees, for example) decide the cash left, so check it after they recalculate
+  SpreadsheetApp.flush();
+  const after = sheet.getDataRange().getValues();
+  result.accounts.filter(a => a.tradable).forEach(account => account.positions
+    .filter(p => p.cls === 'Cash' && p.row >= 0 && number(after[p.row][5]) < -0.005)
+    .forEach(p => result.warnings.push(`${account.name} cash ends at -${money(-after[p.row][5])} after these orders. ` +
+      'Check its New Order Value formulas, for example for a trading fee.')));
   SpreadsheetApp.getUi().alert('Rebalance', report(result), SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
@@ -79,8 +88,10 @@ function planFromGrid(grid, createEngine, formulas) {
   const orders = [];
   const unplaced = [];
   plan.trades.forEach(trade => {
-    // selling a whole position uses the exact share count, so no fraction is left behind
-    const shares = trade.sellAll ? -trade.qty : round(trade.amount / trade.price, 4);
+    // selling a whole position uses the exact share count, so no fraction is left behind; otherwise buys round
+    // down and sells round up, so the orders never spend more cash than the account has
+    const exact = trade.exactAmount / trade.price;
+    const shares = trade.sellAll ? -trade.qty : exact > 0 ? roundDown(exact, 4) : -roundUp(-exact, 4);
     if (trade.row >= 0) orders.push({row: trade.row, shares});
     else unplaced.push(`${trade.account}: ${trade.amount > 0 ? 'buy' : 'sell'} ${money(Math.abs(trade.amount))} ` +
       `${trade.ticker} has no row in the sheet; add one and run again`);
@@ -344,10 +355,12 @@ function rebalance(accounts, targets, band, createEngine) {
   holdings.forEach(h => {
     const final = solution.getVariableValue(h.finalName);
     after[h.cls] = (after[h.cls] || 0) + final;
-    const amount = round(final - h.value, 2);
+    const exactAmount = final - h.value;
+    const amount = exactAmount > 0 ? roundDown(exactAmount, 2) : -roundUp(-exactAmount, 2);
     if (h.cls !== 'Cash' && Math.abs(amount) >= 0.01)
       trades.push({
-        account: h.account.name, ticker: h.ticker, amount, price: prices[h.ticker] || 0, row: h.row, qty: h.qty,
+        account: h.account.name, ticker: h.ticker, amount, exactAmount, price: prices[h.ticker] || 0, row: h.row,
+        qty: h.qty,
         sellAll: h.qty > 0 && final < 0.005,
       });
   });
@@ -400,5 +413,8 @@ function text(value) { return typeof value === 'string' ? value.trim() : ''; }
 function number(value) { return typeof value === 'number' && isFinite(value) ? value : null; }
 function sum(values) { return values.reduce((a, b) => a + b, 0); }
 function round(value, digits) { const f = Math.pow(10, digits); return Math.round(value * f) / f; }
+// the small allowance keeps solver noise (99.9999999) from rounding a whole amount down a step
+function roundDown(value, digits) { const f = Math.pow(10, digits); return Math.floor(value * f + 1e-4) / f; }
+function roundUp(value, digits) { const f = Math.pow(10, digits); return Math.ceil(value * f - 1e-4) / f; }
 function money(value) { return '$' + value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function fail(message) { throw new Error(message); }
